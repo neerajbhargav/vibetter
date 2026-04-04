@@ -13,42 +13,47 @@ import '@vue-flow/minimap/dist/style.css'
 const nodes = ref([])
 const edges = ref([])
 const loading = ref(true)
+const noData = ref(false)
 
-onMounted(async () => {
-    loading.value = true;
-    try {
-        // Mock payload simulating the Master Context generate_blueprint() FastMCP response.
-        // In reality, this UI runs within Claude Desktop/Cursor using SEP-1865,
-        // and the host client directly feeds the schema via protocol context.
-        setTimeout(() => {
-            const mockData = {
-                nodes: [
-                    { id: '1', type: 'input', position: { x: 300, y: 50 }, data: { label: 'src/server.py' }, class: 'bg-blue-900 border-blue-500 text-white shadow-xl shadow-blue-500/20' },
-                    { id: '2', position: { x: 150, y: 200 }, data: { label: 'brain/scholar.py' }, class: 'bg-emerald-900 border-emerald-500 text-white shadow-xl shadow-emerald-500/20' },
-                    { id: '3', position: { x: 450, y: 200 }, data: { label: 'config.py (Env Layer)' }, class: 'bg-gray-800 border-gray-600 text-gray-200 shadow-xl' },
-                    { id: '4', position: { x: 300, y: 350 }, data: { label: 'Master Context Engine' }, class: 'bg-purple-900 border-purple-500 text-white shadow-xl shadow-purple-500/20 rounded-full' }
-                ],
-                edges: [
-                    { id: 'e1-2', source: '1', target: '2', animated: true, style: { stroke: '#3b82f6', strokeWidth: 2 } },
-                    { id: 'e1-3', source: '1', target: '3', animated: true, style: { stroke: '#3b82f6', strokeWidth: 2 } },
-                    { id: 'e2-4', source: '2', target: '4', animated: true, style: { stroke: '#10b981', strokeWidth: 2 } }
-                ]
-            }
-            
-            nodes.value = mockData.nodes
-            edges.value = mockData.edges
-            loading.value = false;
-        }, 1200);
-    } catch (e) {
-        console.error(e)
-        loading.value = false;
+onMounted(() => {
+    const data = window.__VIBETTER_BLUEPRINT__
+
+    if (data && Array.isArray(data.nodes) && data.nodes.length > 0) {
+        // Apply dark theme styling to nodes that don't already have classes
+        nodes.value = data.nodes.map((n, i) => ({
+            ...n,
+            class: n.class || getNodeClass(i),
+        }))
+        edges.value = (data.edges || []).map(e => ({
+            ...e,
+            animated: e.animated ?? true,
+            style: e.style || { stroke: '#3b82f6', strokeWidth: 2 },
+        }))
+        loading.value = false
+    } else {
+        loading.value = false
+        noData.value = true
     }
 })
+
+const palette = [
+    'bg-blue-900 border-blue-500 text-white shadow-xl shadow-blue-500/20',
+    'bg-emerald-900 border-emerald-500 text-white shadow-xl shadow-emerald-500/20',
+    'bg-purple-900 border-purple-500 text-white shadow-xl shadow-purple-500/20',
+    'bg-amber-900 border-amber-500 text-white shadow-xl shadow-amber-500/20',
+    'bg-rose-900 border-rose-500 text-white shadow-xl shadow-rose-500/20',
+    'bg-cyan-900 border-cyan-500 text-white shadow-xl shadow-cyan-500/20',
+]
+
+function getNodeClass(index) {
+    return palette[index % palette.length]
+}
 </script>
 
 <template>
   <div class="h-full w-full">
-    <div v-if="loading" class="absolute inset-0 flex items-center justify-center bg-gray-900/90 z-50 backdrop-blur-sm transition-opacity duration-300">
+    <!-- Loading spinner -->
+    <div v-if="loading" class="absolute inset-0 flex items-center justify-center bg-gray-900/90 z-50 backdrop-blur-sm">
         <div class="flex flex-col items-center gap-6">
             <div class="relative w-16 h-16">
                 <div class="absolute inset-0 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
@@ -57,11 +62,38 @@ onMounted(async () => {
             <p class="text-emerald-400 font-mono tracking-widest text-sm bg-gray-800 px-4 py-2 rounded-lg border border-gray-700 shadow-lg">INGESTING MASTER CONTEXT...</p>
         </div>
     </div>
-    
-    <VueFlow v-model:nodes="nodes" v-model:edges="edges" class="bg-gray-900 text-white vue-flow-dark" fit-view-on-init>
+
+    <!-- No data state -->
+    <div v-else-if="noData" class="absolute inset-0 flex items-center justify-center bg-gray-900 z-50">
+        <div class="flex flex-col items-center gap-4 text-center max-w-md px-6">
+            <div class="text-5xl">🗺️</div>
+            <h2 class="text-xl font-bold text-white">Blueprint not generated yet</h2>
+            <p class="text-gray-400 text-sm leading-relaxed">
+                Call the <code class="bg-gray-800 px-2 py-0.5 rounded text-emerald-400 font-mono">generate_blueprint</code> tool first,
+                then reopen this resource to see your codebase map.
+            </p>
+            <div class="mt-2 bg-gray-800 rounded-lg px-4 py-3 border border-gray-700 text-left w-full">
+                <p class="text-xs text-gray-500 font-mono mb-1">In your IDE chat:</p>
+                <p class="text-sm text-emerald-400 font-mono">generate_blueprint()</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vue Flow graph -->
+    <VueFlow
+        v-else
+        v-model:nodes="nodes"
+        v-model:edges="edges"
+        class="bg-gray-900 text-white vue-flow-dark"
+        fit-view-on-init
+    >
         <Background pattern-color="#374151" gap="24" size="1.2" />
         <Controls class="bg-gray-800 border-gray-700 fill-gray-300" />
-        <MiniMap class="bg-gray-800 border-gray-700 rounded-lg shadow-xl" node-color="#10b981" mask-color="rgba(17, 24, 39, 0.7)" />
+        <MiniMap
+            class="bg-gray-800 border-gray-700 rounded-lg shadow-xl"
+            node-color="#10b981"
+            mask-color="rgba(17, 24, 39, 0.7)"
+        />
     </VueFlow>
   </div>
 </template>
@@ -82,5 +114,8 @@ onMounted(async () => {
 }
 .vue-flow-dark .vue-flow__edge-path {
     stroke-width: 2.5;
+}
+.direction-reverse {
+    animation-direction: reverse;
 }
 </style>

@@ -8,8 +8,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
 dist-ssr
+# dist is intentionally tracked — pre-compiled so users don't need npm
 *.local
 
 # Editor directories and files

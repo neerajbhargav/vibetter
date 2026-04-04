@@ -1,82 +1,191 @@
 #!/usr/bin/env bash
 set -e
 
-echo "🚀 Welcome to VIBETTER Installer!"
+# ─── Colors ────────────────────────────────────────────────────────────────────
+CYAN='\033[0;36m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
+info()    { echo -e "${CYAN}$1${NC}"; }
+success() { echo -e "${GREEN}✅ $1${NC}"; }
+warn()    { echo -e "${YELLOW}⚠️  $1${NC}"; }
+error()   { echo -e "${RED}❌ $1${NC}"; }
 
-# 1. Download/Update codebase
+echo ""
+echo -e "${CYAN}╔══════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║        VIBETTER — One-Line Install       ║${NC}"
+echo -e "${CYAN}║   Cognitive Codebase Bridge for Gemini   ║${NC}"
+echo -e "${CYAN}╚══════════════════════════════════════════╝${NC}"
+echo ""
+
+# ─── 1. Install/Update ─────────────────────────────────────────────────────────
 INSTALL_DIR="$HOME/.vibetter"
-if [ -d "$INSTALL_DIR" ]; then
-    echo "Updating existing installation in $INSTALL_DIR..."
-    cd "$INSTALL_DIR"
-    git pull -q
+
+if [ -d "$INSTALL_DIR/.git" ]; then
+    info "Updating existing installation..."
+    git -C "$INSTALL_DIR" pull -q --ff-only 2>/dev/null || true
 else
-    echo "Cloning VIBETTER..."
+    info "Installing VIBETTER to ~/.vibetter..."
     git clone -q https://github.com/neerajbhargav/vibetter.git "$INSTALL_DIR"
 fi
 
-# 2. Setup Virtual Environment autonomously
-echo "Setting up isolated Python environment..."
-cd "$INSTALL_DIR"
-python3 -m venv venv
-PYTHON_BIN="$INSTALL_DIR/venv/bin/python"
-$PYTHON_BIN -m pip install --upgrade pip -q
-$PYTHON_BIN -m pip install -r backend/requirements.txt -q
+# ─── 2. Python venv ────────────────────────────────────────────────────────────
+info "Setting up Python environment..."
 
-# 3. Environment Config
+PYTHON_CMD=""
+for cmd in python3 python python3.11 python3.10 python3.9; do
+    if command -v "$cmd" &>/dev/null && "$cmd" -c "import sys; exit(0 if sys.version_info >= (3,9) else 1)" 2>/dev/null; then
+        PYTHON_CMD="$cmd"
+        break
+    fi
+done
+
+if [ -z "$PYTHON_CMD" ]; then
+    error "Python 3.9+ is required. Install it from https://python.org and re-run."
+    exit 1
+fi
+
+PYTHON_BIN="$INSTALL_DIR/venv/bin/python"
+
+if [ ! -f "$PYTHON_BIN" ]; then
+    "$PYTHON_CMD" -m venv "$INSTALL_DIR/venv"
+fi
+
+"$PYTHON_BIN" -m pip install --upgrade pip -q
+"$PYTHON_BIN" -m pip install -r "$INSTALL_DIR/backend/requirements.txt" -q
+success "Python environment ready"
+
+# ─── 3. Gemini API Key ─────────────────────────────────────────────────────────
 echo ""
-read -p "1️⃣ Please enter your Google Gemini (AI Studio) API Key: " API_KEY
+info "Get a free Gemini API key at: https://aistudio.google.com/apikey"
+echo ""
+read -rp "$(echo -e "${CYAN}Enter your Gemini API Key: ${NC}")" API_KEY
+
+if [ -z "$API_KEY" ]; then
+    error "API key cannot be empty."
+    exit 1
+fi
+
+# Verify the key works
+info "Verifying API key..."
+VERIFY=$("$PYTHON_BIN" -c "
+try:
+    from google import genai
+    c = genai.Client(api_key='$API_KEY')
+    r = c.models.generate_content(model='gemini-2.0-flash', contents='Say: OK')
+    print('OK')
+except Exception as e:
+    print(f'FAIL:{e}')
+" 2>/dev/null)
+
+if [[ "$VERIFY" == "OK" ]]; then
+    success "API key verified!"
+else
+    warn "Could not verify key right now (may be a quota issue). Proceeding anyway."
+    warn "If tools fail, get a fresh key at: https://aistudio.google.com/apikey"
+fi
 
 mkdir -p "$INSTALL_DIR/backend"
 echo "GEMINI_API_KEY=$API_KEY" > "$INSTALL_DIR/backend/.env"
-echo "VIBETTER_CODEBASE_PATH=." >> "$INSTALL_DIR/backend/.env"
-echo "✅ Saved API Key securely inside ~/.vibetter/backend/.env"
 
-# 4. Native IDE Integration
+# ─── 4. Auto-detect and register IDEs ─────────────────────────────────────────
 echo ""
-echo "2️⃣ Which IDE are you using?"
-echo "   1) Claude Desktop"
-echo "   2) Cursor"
-echo "   3) Claude Code (Terminal)"
-read -p "Select [1-3]: " IDE_CHOICE
+info "Detecting installed IDEs..."
+REGISTERED=false
 
-if [ "$IDE_CHOICE" = "1" ]; then
-    if [ "$(uname)" = "Darwin" ]; then
-        CONFIG_PATH="$HOME/Library/Application Support/Claude/claude_desktop_config.json"
-    else
-        CONFIG_PATH="$HOME/.claude_desktop_config.json"
-    fi
-    
-    mkdir -p "$(dirname "$CONFIG_PATH")"
-    if [ ! -f "$CONFIG_PATH" ]; then
-        echo '{"mcpServers": {}}' > "$CONFIG_PATH"
-    fi
-    
-    $PYTHON_BIN -c "
-import json, os
-path = os.path.expanduser('$CONFIG_PATH')
-with open(path, 'r') as f:
-    data = json.load(f)
-if 'mcpServers' not in data:
-    data['mcpServers'] = {}
-data['mcpServers']['vibetter'] = {
+register_mcp_json() {
+    local config_path="$1"
+    local ide_name="$2"
+    mkdir -p "$(dirname "$config_path")"
+    "$PYTHON_BIN" -c "
+import json, os, sys
+
+path = '$config_path'
+data = {}
+if os.path.exists(path):
+    try:
+        data = json.load(open(path))
+    except Exception:
+        pass
+
+data.setdefault('mcpServers', {})['vibetter'] = {
     'command': '$PYTHON_BIN',
     'args': ['-u', '$INSTALL_DIR/backend/src/server.py'],
     'env': {'GEMINI_API_KEY': '$API_KEY'}
 }
-with open(path, 'w') as f:
-    json.dump(data, f, indent=2)
-"
-    echo "🎉 Claude Desktop configured!"
+json.dump(data, open(path, 'w'), indent=2)
+" && success "$ide_name configured!" || warn "Failed to write $ide_name config"
+}
 
-elif [ "$IDE_CHOICE" = "2" ]; then
-    echo "For Cursor, open Settings -> MCP -> Add Command:"
-    echo "Name: vibetter"
-    echo "Command: $PYTHON_BIN -u \"$INSTALL_DIR/backend/src/server.py\""
-
-elif [ "$IDE_CHOICE" = "3" ]; then
-    echo "In your target repository directory, run:"
-    echo "claude mcp add vibetter $PYTHON_BIN -u \"$INSTALL_DIR/backend/src/server.py\" -e GEMINI_API_KEY=$API_KEY"
+# Claude Code (auto-register via CLI — works immediately, no restart needed)
+if command -v claude &>/dev/null; then
+    # Remove stale entry first, then add fresh
+    claude mcp remove vibetter -s user 2>/dev/null || true
+    claude mcp add vibetter -s user \
+        -e GEMINI_API_KEY="$API_KEY" \
+        -- "$PYTHON_BIN" -u "$INSTALL_DIR/backend/src/server.py" 2>/dev/null \
+        && success "Claude Code — auto-registered (no restart needed)" \
+        && REGISTERED=true \
+        || warn "Claude Code detected but auto-registration failed. Run manually: claude mcp add vibetter -s user -e GEMINI_API_KEY=$API_KEY -- $PYTHON_BIN -u $INSTALL_DIR/backend/src/server.py"
 fi
 
+# Cursor (~/.cursor/mcp.json)
+if [ -d "$HOME/.cursor" ] || command -v cursor &>/dev/null; then
+    register_mcp_json "$HOME/.cursor/mcp.json" "Cursor"
+    REGISTERED=true
+fi
+
+# Claude Desktop (macOS)
+if [ "$(uname)" = "Darwin" ] && [ -d "$HOME/Library/Application Support/Claude" ]; then
+    register_mcp_json "$HOME/Library/Application Support/Claude/claude_desktop_config.json" "Claude Desktop (Mac)"
+    REGISTERED=true
+fi
+
+# Claude Desktop (Linux)
+if [ -f "$HOME/.config/Claude/claude_desktop_config.json" ] || [ -d "$HOME/.config/Claude" ]; then
+    register_mcp_json "$HOME/.config/Claude/claude_desktop_config.json" "Claude Desktop (Linux)"
+    REGISTERED=true
+fi
+
+# Windsurf (~/.codeium/windsurf/mcp_config.json)
+if [ -d "$HOME/.codeium/windsurf" ]; then
+    register_mcp_json "$HOME/.codeium/windsurf/mcp_config.json" "Windsurf"
+    REGISTERED=true
+fi
+
+# VS Code + Roo/Cline (~/.vscode/mcp.json)
+if command -v code &>/dev/null; then
+    register_mcp_json "$HOME/.vscode/mcp.json" "VS Code (Roo/Cline)"
+    REGISTERED=true
+fi
+
+# No IDE detected — print manual instructions
+if [ "$REGISTERED" = false ]; then
+    echo ""
+    warn "No supported IDE auto-detected. Add VIBETTER manually:"
+    echo ""
+    echo "  Claude Code:  claude mcp add vibetter -s user -e GEMINI_API_KEY=$API_KEY -- $PYTHON_BIN -u $INSTALL_DIR/backend/src/server.py"
+    echo ""
+    echo "  Any IDE with mcp.json support:"
+    echo '  {'
+    echo '    "mcpServers": {'
+    echo '      "vibetter": {'
+    echo "        \"command\": \"$PYTHON_BIN\","
+    echo "        \"args\": [\"-u\", \"$INSTALL_DIR/backend/src/server.py\"],"
+    echo "        \"env\": { \"GEMINI_API_KEY\": \"$API_KEY\" }"
+    echo '      }'
+    echo '    }'
+    echo '  }'
+fi
+
+# ─── 5. Done ───────────────────────────────────────────────────────────────────
 echo ""
-echo "🔥 VIBETTER setup is complete! Restart your IDE."
+echo -e "${GREEN}╔══════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║         VIBETTER is ready to use!        ║${NC}"
+echo -e "${GREEN}╚══════════════════════════════════════════╝${NC}"
+echo ""
+echo "  Open any project in your IDE and use these tools:"
+echo ""
+echo -e "  ${CYAN}explain_last_change()${NC}        — understand what AI just generated"
+echo -e "  ${CYAN}scholar_explain(file, q)${NC}     — explain any file or function"
+echo -e "  ${CYAN}debug_error_in_context(err)${NC}  — paste an error, get a fix"
+echo -e "  ${CYAN}generate_blueprint()${NC}         — visualize your codebase map"
+echo -e "  ${CYAN}generate_audio_overview(q)${NC}   — listen to a code walkthrough"
+echo ""

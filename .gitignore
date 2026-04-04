@@ -1,6 +1,7 @@
 # Environments
 .env
 .env.*
+!.env.example
 
 # Python
 __pycache__/
@@ -18,3 +19,14 @@ dist-ssr/
 .idea/
 *.swp
 .claude.json
+
+# Test artifacts & logs
+*.log
+*.json
+!package.json
+!package-lock.json
+!tsconfig*.json
+!vite.config.*
+
+# Generated outputs
+backend/outputs/
