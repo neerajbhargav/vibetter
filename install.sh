@@ -28,7 +28,6 @@ read -p "1️⃣ Please enter your Google Gemini (AI Studio) API Key: " API_KEY
 
 mkdir -p "$INSTALL_DIR/backend"
 echo "GEMINI_API_KEY=$API_KEY" > "$INSTALL_DIR/backend/.env"
-echo "VIBETTER_CODEBASE_PATH=." >> "$INSTALL_DIR/backend/.env"
 echo "✅ Saved API Key securely inside ~/.vibetter/backend/.env"
 
 # 4. Native IDE Integration
@@ -75,7 +74,7 @@ elif [ "$IDE_CHOICE" = "2" ]; then
 
 elif [ "$IDE_CHOICE" = "3" ]; then
     echo "In your target repository directory, run:"
-    echo "claude mcp add vibetter $PYTHON_BIN -u \"$INSTALL_DIR/backend/src/server.py\" -e GEMINI_API_KEY=$API_KEY"
+    echo "claude mcp add -e GEMINI_API_KEY=$API_KEY -e VIBETTER_CODEBASE_PATH=\$(pwd) vibetter -- $PYTHON_BIN -u \"$INSTALL_DIR/backend/src/server.py\""
 fi
 
 echo ""

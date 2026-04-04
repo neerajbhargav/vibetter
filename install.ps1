@@ -21,11 +21,12 @@ $PythonBin = "$InstallDir\venv\Scripts\python.exe"
 
 # 3. Environment Config
 $ApiKey = Read-Host "`n1️⃣ Please enter your Google Gemini (AI Studio) API Key"
+# Capture the user's project directory before we cd into $InstallDir
+$ProjectPath = $PWD.Path
 
 $EnvPath = "$InstallDir\backend\.env"
 if (!(Test-Path "$InstallDir\backend")) { New-Item -ItemType Directory -Path "$InstallDir\backend" | Out-Null }
-$TargetCodebase = (Get-Location).Path
-"GEMINI_API_KEY=$ApiKey`nVIBETTER_CODEBASE_PATH=$TargetCodebase" | Out-File -FilePath $EnvPath -Encoding utf8
+"GEMINI_API_KEY=$ApiKey" | Out-File -FilePath $EnvPath -Encoding utf8
 Write-Host "✅ Saved to backend\.env securely." -ForegroundColor Green
 
 # 4. Native IDE Integration
@@ -38,31 +39,36 @@ $IdeChoice = Read-Host "Select [1-3]"
 if ($IdeChoice -eq '1') {
     $ConfigPath = "$env:APPDATA\Claude\claude_desktop_config.json"
     if (!(Test-Path (Split-Path $ConfigPath))) { New-Item -ItemType Directory -Path (Split-Path $ConfigPath) | Out-Null }
-    
+
+    # Read existing config or start fresh; use raw hashtable to avoid PSCustomObject merge issues
     if (Test-Path $ConfigPath) {
-        $JsonData = Get-Content -Raw $ConfigPath | ConvertFrom-Json
+        $RawJson = Get-Content -Raw $ConfigPath
+        $JsonObj = $RawJson | ConvertFrom-Json
+        # Convert to hashtable so we can freely mutate keys
+        $JsonData = @{}
+        $JsonObj.psobject.properties | ForEach-Object { $JsonData[$_.Name] = $_.Value }
     } else {
-        $JsonData = @{ mcpServers = @{} }
+        $JsonData = @{}
     }
-    
-    if (-not $JsonData.psobject.properties.match('mcpServers').Count) {
-        $JsonData | Add-Member -MemberType NoteProperty -Name 'mcpServers' -Value @{}
+
+    if (-not $JsonData.ContainsKey('mcpServers')) {
+        $JsonData['mcpServers'] = @{}
     }
-    
-    $McpPayload = @{
-        command = "$PythonBin"
-        args = @("-u", "$InstallDir\backend\src\server.py")
-        env = @{ GEMINI_API_KEY = $ApiKey }
+
+    # Normalize mcpServers to a hashtable regardless of source type
+    $McpServers = @{}
+    if ($JsonData['mcpServers'] -ne $null) {
+        $JsonData['mcpServers'].psobject.properties | ForEach-Object { $McpServers[$_.Name] = $_.Value }
     }
-    
-    if ($JsonData.mcpServers -is [System.Collections.Hashtable]) {
-        $JsonData.mcpServers['vibetter'] = $McpPayload
-    } else {
-        $JsonData.mcpServers | Add-Member -MemberType NoteProperty -Name 'vibetter' -Value $McpPayload -Force
+
+    $McpServers['vibetter'] = [ordered]@{
+        command = $PythonBin
+        args    = @("-u", "$InstallDir\backend\src\server.py")
+        env     = @{ GEMINI_API_KEY = $ApiKey }
     }
-    
-    $JsonData | ConvertTo-Json -Depth 10 | Out-File $ConfigPath -Encoding utf8
-    
+    $JsonData['mcpServers'] = $McpServers
+
+    $JsonData | ConvertTo-Json -Depth 10 | Out-File $ConfigPath -Encoding utf8NoBOM
     Write-Host "🎉 Claude Desktop configured!" -ForegroundColor Green
 } elseif ($IdeChoice -eq '2') {
     Write-Host "`nFor Cursor, open Settings -> MCP -> Add Command:"
@@ -70,7 +76,7 @@ if ($IdeChoice -eq '1') {
     Write-Host "Command: $PythonBin -u `"$InstallDir\backend\src\server.py`""
 } elseif ($IdeChoice -eq '3') {
     Write-Host "`nIn your target repository directory, run:"
-    Write-Host "claude mcp add vibetter $PythonBin -u `"$InstallDir\backend\src\server.py`" -e GEMINI_API_KEY=$ApiKey"
+    Write-Host "claude mcp add -e GEMINI_API_KEY=$ApiKey -e VIBETTER_CODEBASE_PATH=`$PWD vibetter -- `"$PythonBin`" -u `"$InstallDir\backend\src\server.py`""
 }
 
 Write-Host "`n🔥 VIBETTER setup is complete! Restart your IDE." -ForegroundColor Magenta
