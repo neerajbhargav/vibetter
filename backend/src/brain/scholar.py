@@ -33,8 +33,6 @@ class MasterContextManager(FileSystemEventHandler):
 
     def build_context(self):
         """Recursively parses text-based code files into one massive context payload."""
-        import sys
-        print(f"Building Master Context from {self.codebase_path}...", file=sys.stderr)
         context_parts = []
         for root, dirs, files in os.walk(self.codebase_path):
             # Exclude massive static/binary folders
@@ -49,12 +47,9 @@ class MasterContextManager(FileSystemEventHandler):
                     except Exception:
                         pass
         self.master_context = "\n".join(context_parts)
-        print("Master Context Built & Cached. Ready for Gemini API.", file=sys.stderr)
-
     def on_modified(self, event):
         # Trigger contextual rebuild on file save
         if not event.is_directory and not event.src_path.endswith('.tmp'):
-            print(f"[Auto-Sync] File changed: {event.src_path}. Rebuilding context...", file=sys.stderr)
             self.build_context()
 
 # Initialize singleton context manager
