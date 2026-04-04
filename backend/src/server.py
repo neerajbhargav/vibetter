@@ -1,46 +1,93 @@
 import os
+import json
 from fastmcp import FastMCP
 from typing import Dict, Any
-from brain.scholar import ask_gemini_with_context, generate_architecture_json, generate_audio_explanation
+from brain.scholar import (
+    ask_gemini_with_context,
+    generate_architecture_json,
+    generate_audio_explanation,
+    explain_diff,
+    debug_error,
+    _blueprint_cache,
+)
 
-# Initialize FastMCP Server exposing protocol standard tools and resources
-mcp = FastMCP("VIBETTER Cognitive Bridge", version="1.0.0")
+mcp = FastMCP("VIBETTER Cognitive Bridge", version="1.1.0")
+
 
 @mcp.tool()
 async def scholar_explain(file_path: str, question: str) -> str:
     """
-    Answers "Why" questions about a file/function with mandatory source-grounding.
-    Uses Gemini 3.1 Pro's 2M+ context window.
+    Explains any file or function in your codebase in plain English.
+    Perfect for understanding what AI-generated code actually does.
+    Example: file_path="src/api.js", question="Why is async/await used here?"
     """
     return await ask_gemini_with_context(question, target_file=file_path)
+
 
 @mcp.tool()
 async def generate_blueprint() -> Dict[str, Any]:
     """
-    Uses Gemini's Structured Output to return a dependency graph JSON for Vue Flow.
+    Generates an interactive dependency graph of your entire codebase.
+    Shows how all files connect to each other. Open ui://blueprint to visualize it.
     """
     return await generate_architecture_json()
+
 
 @mcp.tool()
 async def generate_audio_overview(question: str, file_path: str = None) -> str:
     """
-    Multimodal Code Podcast generator! Creates an engaging MP3 audio walkthrough of an architectural question.
+    Creates an MP3 audio walkthrough explaining your codebase like a podcast.
+    Great for understanding architecture while away from your screen.
+    Example: question="How does authentication work in this app?"
     """
     return await generate_audio_explanation(question, target_file=file_path)
+
+
+@mcp.tool()
+async def explain_last_change() -> str:
+    """
+    Explains what your AI tool just changed in plain English so you can learn from it.
+    Run this immediately after Claude, Cursor, or Copilot makes edits to your code.
+    No arguments needed — it reads your git diff automatically.
+    """
+    return await explain_diff()
+
+
+@mcp.tool()
+async def debug_error_in_context(error_message: str, file_path: str = None) -> str:
+    """
+    Paste any error message and get a plain-English explanation + exact fix.
+    Understands your specific codebase to give precise, actionable answers.
+    Example: error_message="TypeError: Cannot read properties of undefined (reading 'map')"
+    """
+    return await debug_error(error_message, file_path=file_path)
+
 
 @mcp.resource("ui://blueprint")
 async def get_blueprint_ui() -> str:
     """
-    SEP-1865 Compliant UI resource.
-    When an MCP-compatible IDE (like Cursor/Claude Desktop) queries this, it will fetch the compiled Vue HTML and render it.
+    Interactive Vue Flow map of your codebase dependency graph.
+    Call generate_blueprint first, then open this resource to visualize it.
     """
-    # Look for the compiled Vue static assets
-    dist_path = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist", "index.html")
-    if os.path.exists(dist_path):
-        with open(dist_path, "r", encoding="utf-8") as f:
-            return f.read()
-    return "<h1>Frontend build missing. Please run `npm run build` in the /frontend directory to generate the Vue Blueprint map.</h1>"
+    dist_path = os.path.join(
+        os.path.dirname(__file__), "..", "..", "frontend", "dist", "index.html"
+    )
+
+    if not os.path.exists(dist_path):
+        return "<h1>Frontend build missing.</h1><p>Run <code>npm run build</code> in the /frontend directory.</p>"
+
+    with open(dist_path, "r", encoding="utf-8") as f:
+        html = f.read()
+
+    # Inject the latest blueprint data so the UI doesn't need a network call
+    import brain.scholar as scholar_module
+    cached = scholar_module._blueprint_cache
+    blueprint_json = json.dumps(cached) if cached else "null"
+    injection = f"<script>window.__VIBETTER_BLUEPRINT__ = {blueprint_json};</script>"
+    html = html.replace("</head>", f"{injection}\n</head>", 1)
+
+    return html
+
 
 if __name__ == "__main__":
-    # Start standard I/O serving loop for MCP protocol
     mcp.run()
