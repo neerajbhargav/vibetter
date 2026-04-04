@@ -49,12 +49,17 @@ if ($IdeChoice -eq '1') {
     }
     
     $McpPayload = @{
-        command = $PythonBin
+        command = "$PythonBin"
         args = @("-u", "$InstallDir\backend\src\server.py")
         env = @{ GEMINI_API_KEY = $ApiKey }
     }
     
-    $JsonData.mcpServers.vibetter = $McpPayload
+    if ($JsonData.mcpServers -is [System.Collections.Hashtable]) {
+        $JsonData.mcpServers['vibetter'] = $McpPayload
+    } else {
+        $JsonData.mcpServers | Add-Member -MemberType NoteProperty -Name 'vibetter' -Value $McpPayload -Force
+    }
+    
     $JsonData | ConvertTo-Json -Depth 10 | Out-File $ConfigPath -Encoding utf8
     
     Write-Host "🎉 Claude Desktop configured!" -ForegroundColor Green
