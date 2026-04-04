@@ -6,7 +6,10 @@ from typing import Dict, Any
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import google.generativeai as genai
-from ..config import GEMINI_API_KEY, VIBETTER_CODEBASE_PATH
+import sys
+import os.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import GEMINI_API_KEY, VIBETTER_CODEBASE_PATH
 
 # Configure Gemini Native SDK
 if GEMINI_API_KEY:
