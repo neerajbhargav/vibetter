@@ -14,11 +14,11 @@ import os.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import GEMINI_API_KEY, VIBETTER_CODEBASE_PATH
 
-# Model fallback chain — tries each in order on quota/rate errors
+# Model fallback chain — tries each in order on quota/rate/availability errors
 FALLBACK_MODELS = [
-    os.getenv("VIBETTER_MODEL", "gemini-2.0-flash"),
+    os.getenv("VIBETTER_MODEL", "gemini-2.0-flash-lite"),
+    "gemini-2.5-flash",
     "gemini-1.5-flash",
-    "gemini-1.5-pro",
 ]
 
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
@@ -112,10 +112,12 @@ async def _call_gemini(prompt: str, json_mode: bool = False) -> str:
             return response.text
         except Exception as e:
             err = str(e)
-            if "429" in err or "quota" in err.lower() or "rate" in err.lower():
+            # Catch quota, rate limit, and model availability errors — try next model
+            if any(x in err for x in ("429", "404", "NOT_FOUND", "RESOURCE_EXHAUSTED")) \
+               or any(x in err.lower() for x in ("quota", "rate", "no longer available", "deprecated")):
                 last_error = e
-                continue  # try next model
-            raise  # non-quota errors bubble up immediately
+                continue
+            raise  # non-transient errors bubble up immediately
 
     return f"Error: All Gemini models hit quota limits. Try again later or enable billing at console.cloud.google.com/billing\n\nDetails: {last_error}"
 
