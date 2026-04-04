@@ -38,7 +38,7 @@ class MasterContextManager(FileSystemEventHandler):
         context_parts = []
         for root, dirs, files in os.walk(self.codebase_path):
             # Exclude massive static/binary folders
-            dirs[:] = [d for d in dirs if d not in ('node_modules', '.git', '__pycache__', 'dist', '.venv')]
+            dirs[:] = [d for d in dirs if d not in ('node_modules', '.git', '__pycache__', 'dist', '.venv', 'venv')]
             for file in files:
                 if file.endswith(('.py', '.js', '.vue', '.ts', '.md', '.json', '.html', '.css', '.env.example')):
                     filepath = os.path.join(root, file)
