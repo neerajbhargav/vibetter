@@ -24,7 +24,8 @@ $ApiKey = Read-Host "`n1️⃣ Please enter your Google Gemini (AI Studio) API K
 
 $EnvPath = "$InstallDir\backend\.env"
 if (!(Test-Path "$InstallDir\backend")) { New-Item -ItemType Directory -Path "$InstallDir\backend" | Out-Null }
-"GEMINI_API_KEY=$ApiKey`nVIBETTER_CODEBASE_PATH=." | Out-File -FilePath $EnvPath -Encoding utf8
+$TargetCodebase = (Get-Location).Path
+"GEMINI_API_KEY=$ApiKey`nVIBETTER_CODEBASE_PATH=$TargetCodebase" | Out-File -FilePath $EnvPath -Encoding utf8
 Write-Host "✅ Saved to backend\.env securely." -ForegroundColor Green
 
 # 4. Native IDE Integration
