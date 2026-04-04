@@ -18,14 +18,13 @@ $InstallDir = "$env:USERPROFILE\.vibetter"
 
 if (Test-Path "$InstallDir\.git") {
     Write-Info "Updating existing installation..."
-    # Back up .env, hard reset to clear any tracked-file conflicts, pull, restore
+    # Preserve .env, fetch remote, force-reset to origin/main (no merge = no conflicts)
     $EnvBackup = $null
     if (Test-Path "$InstallDir\backend\.env") {
         $EnvBackup = Get-Content "$InstallDir\backend\.env" -Raw
     }
-    git -C $InstallDir reset --hard HEAD 2>$null
-    git -C $InstallDir clean -fd --exclude="backend/.env" 2>$null
-    git -C $InstallDir pull -q 2>$null
+    git -C $InstallDir fetch origin -q 2>$null
+    git -C $InstallDir reset --hard origin/main 2>$null
     if ($EnvBackup) {
         $EnvBackup | Out-File "$InstallDir\backend\.env" -Encoding utf8NoBOM -NoNewline
     }
