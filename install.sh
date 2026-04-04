@@ -20,7 +20,10 @@ INSTALL_DIR="$HOME/.vibetter"
 
 if [ -d "$INSTALL_DIR/.git" ]; then
     info "Updating existing installation..."
+    # Preserve .env across the pull — stash everything, pull, restore
+    git -C "$INSTALL_DIR" stash -q 2>/dev/null || true
     git -C "$INSTALL_DIR" pull -q --ff-only 2>/dev/null || true
+    git -C "$INSTALL_DIR" stash pop -q 2>/dev/null || true
 else
     info "Installing VIBETTER to ~/.vibetter..."
     git clone -q https://github.com/neerajbhargav/vibetter.git "$INSTALL_DIR"
