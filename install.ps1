@@ -18,10 +18,17 @@ $InstallDir = "$env:USERPROFILE\.vibetter"
 
 if (Test-Path "$InstallDir\.git") {
     Write-Info "Updating existing installation..."
-    # Preserve .env across the pull — stash everything, pull, restore
-    git -C $InstallDir stash -q 2>$null
-    git -C $InstallDir pull -q --ff-only 2>$null
-    git -C $InstallDir stash pop -q 2>$null
+    # Back up .env, hard reset to clear any tracked-file conflicts, pull, restore
+    $EnvBackup = $null
+    if (Test-Path "$InstallDir\backend\.env") {
+        $EnvBackup = Get-Content "$InstallDir\backend\.env" -Raw
+    }
+    git -C $InstallDir reset --hard HEAD 2>$null
+    git -C $InstallDir clean -fd --exclude="backend/.env" 2>$null
+    git -C $InstallDir pull -q 2>$null
+    if ($EnvBackup) {
+        $EnvBackup | Out-File "$InstallDir\backend\.env" -Encoding utf8NoBOM -NoNewline
+    }
 } else {
     Write-Info "Installing VIBETTER to ~/.vibetter..."
     git clone -q https://github.com/neerajbhargav/vibetter.git $InstallDir
