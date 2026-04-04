@@ -6,7 +6,10 @@ from typing import Dict, Any
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import google.generativeai as genai
-from ..config import GEMINI_API_KEY, VIBETTER_CODEBASE_PATH
+import sys
+import os.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import GEMINI_API_KEY, VIBETTER_CODEBASE_PATH
 
 # Configure Gemini Native SDK
 if GEMINI_API_KEY:
@@ -35,7 +38,7 @@ class MasterContextManager(FileSystemEventHandler):
         context_parts = []
         for root, dirs, files in os.walk(self.codebase_path):
             # Exclude massive static/binary folders
-            dirs[:] = [d for d in dirs if d not in ('node_modules', '.git', '__pycache__', 'dist', '.venv')]
+            dirs[:] = [d for d in dirs if d not in ('node_modules', '.git', '__pycache__', 'dist', '.venv', 'venv')]
             for file in files:
                 if file.endswith(('.py', '.js', '.vue', '.ts', '.md', '.json', '.html', '.css', '.env.example')):
                     filepath = os.path.join(root, file)
