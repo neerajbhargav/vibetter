@@ -16,8 +16,8 @@ Write-Host "Setting up isolated Python environment..."
 Set-Location $InstallDir
 python -m venv venv
 $PythonBin = "$InstallDir\venv\Scripts\python.exe"
-& $PythonBin -m pip install --upgrade pip -q
-& $PythonBin -m pip install -r backend\requirements.txt -q
+& $PythonBin -m pip install --upgrade pip
+& $PythonBin -m pip install -r backend\requirements.txt
 
 # 3. Environment Config
 $ApiKey = Read-Host "`n1️⃣ Please enter your Google Gemini (AI Studio) API Key"
