@@ -26,7 +26,7 @@ if (Test-Path "$InstallDir\.git") {
     git -C $InstallDir fetch origin -q 2>$null
     git -C $InstallDir reset --hard origin/main 2>$null
     if ($EnvBackup) {
-        $EnvBackup | Out-File "$InstallDir\backend\.env" -Encoding utf8NoBOM -NoNewline
+        [System.IO.File]::WriteAllText("$InstallDir\backend\.env", $EnvBackup)
     }
 } else {
     Write-Info "Installing VIBETTER to ~/.vibetter..."
@@ -90,7 +90,7 @@ if ($Verify -eq 'OK') {
 }
 
 if (-not (Test-Path "$InstallDir\backend")) { New-Item -ItemType Directory -Path "$InstallDir\backend" | Out-Null }
-"GEMINI_API_KEY=$ApiKey" | Out-File -FilePath "$InstallDir\backend\.env" -Encoding utf8NoBOM
+"GEMINI_API_KEY=$ApiKey" | Out-File -FilePath "$InstallDir\backend\.env" -Encoding utf8
 
 # ─── 4. Auto-detect and register IDEs ─────────────────────────────────────────
 Write-Host ""
@@ -126,7 +126,7 @@ function Register-McpJson {
     }
     $data['mcpServers'] = $servers
 
-    $data | ConvertTo-Json -Depth 10 | Out-File $ConfigPath -Encoding utf8NoBOM
+    $data | ConvertTo-Json -Depth 10 | Out-File $ConfigPath -Encoding utf8
     Write-Success "$IdeName configured!"
 }
 
