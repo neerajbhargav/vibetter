@@ -46,6 +46,9 @@ Write-Info "Setting up Python environment..."
 $PythonCmd = $null
 foreach ($cmd in @('python', 'python3', 'py')) {
     try {
+        $cmdPath = (Get-Command $cmd -ErrorAction SilentlyContinue).Source
+        if ($cmdPath -and (Get-Item $cmdPath).Length -eq 0) { continue }
+        
         $ver = & $cmd -c "import sys; print(sys.version_info >= (3,9))" 2>$null
         if ($ver -eq 'True') { $PythonCmd = $cmd; break }
     } catch {}
@@ -109,29 +112,24 @@ function Register-McpJson {
     $dir = Split-Path $ConfigPath
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
 
-    $data = @{}
+    $data = $null
     if (Test-Path $ConfigPath) {
-        try { $data = (Get-Content -Raw $ConfigPath | ConvertFrom-Json -AsHashtable) } catch {}
+        try { $data = Get-Content -Raw $ConfigPath | ConvertFrom-Json } catch {}
+    }
+    if ($null -eq $data) { $data = New-Object PSObject }
+
+    if ($null -eq $data.mcpServers) {
+        $data | Add-Member -MemberType NoteProperty -Name "mcpServers" -Value (New-Object PSObject)
     }
 
-    if (-not $data.ContainsKey('mcpServers')) { $data['mcpServers'] = @{} }
-
-    # Normalize to hashtable
-    $servers = @{}
-    if ($data['mcpServers'] -ne $null) {
-        if ($data['mcpServers'] -is [hashtable]) {
-            $servers = $data['mcpServers']
-        } else {
-            $data['mcpServers'].PSObject.Properties | ForEach-Object { $servers[$_.Name] = $_.Value }
-        }
-    }
-
-    $servers['vibetter'] = [ordered]@{
+    # Add or update vibetter on $data.mcpServers
+    $vibetter = [ordered]@{
         command = $PythonBin
         args    = @('-u', "$InstallDir\backend\src\server.py")
         env     = @{ GEMINI_API_KEY = $ApiKey }
     }
-    $data['mcpServers'] = $servers
+    
+    $data.mcpServers | Add-Member -MemberType NoteProperty -Name "vibetter" -Value $vibetter -Force
 
     $data | ConvertTo-Json -Depth 10 | Out-File $ConfigPath -Encoding utf8
     Write-Success "$IdeName configured!"
@@ -143,7 +141,7 @@ if (Get-Command claude -ErrorAction SilentlyContinue) {
         claude mcp remove vibetter -s user 2>$null
         claude mcp add vibetter -s user `
             -e "GEMINI_API_KEY=$ApiKey" `
-            -- $PythonBin -u "$InstallDir\backend\src\server.py" 2>$null
+            -- "$PythonBin" -u "$InstallDir\backend\src\server.py" 2>$null
         Write-Success "Claude Code — auto-registered (no restart needed)"
         $Registered = $true
     } catch {
