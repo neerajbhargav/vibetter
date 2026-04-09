@@ -47,7 +47,6 @@ $PythonCmd = $null
 foreach ($cmd in @('python', 'python3', 'py')) {
     try {
         $cmdPath = (Get-Command $cmd -ErrorAction SilentlyContinue).Source
-        if ($cmdPath -and (Get-Item $cmdPath).Length -eq 0) { continue }
         
         $ver = & $cmd -c "import sys; print(sys.version_info >= (3,9))" 2>$null
         if ($ver -eq 'True') { $PythonCmd = $cmd; break }
