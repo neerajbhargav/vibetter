@@ -85,7 +85,7 @@ $Verify = & $PythonBin -c @"
 try:
     from google import genai
     c = genai.Client(api_key='$ApiKey')
-    r = c.models.generate_content(model='gemini-2.0-flash', contents='Say: OK')
+    r = c.models.generate_content(model='gemini-2.0-flash-lite', contents='Say: OK')
     print('OK')
 except Exception as e:
     print(f'FAIL:{e}')
@@ -99,7 +99,7 @@ if ($Verify -eq 'OK') {
 }
 
 if (-not (Test-Path "$InstallDir\backend")) { New-Item -ItemType Directory -Path "$InstallDir\backend" | Out-Null }
-"GEMINI_API_KEY=$ApiKey" | Out-File -FilePath "$InstallDir\backend\.env" -Encoding utf8
+[System.IO.File]::WriteAllText("$InstallDir\backend\.env", "GEMINI_API_KEY=$ApiKey`n")
 
 # --- 4. Auto-detect and register IDEs -----------------------------------------
 Write-Host ""
@@ -130,7 +130,8 @@ function Register-McpJson {
     
     $data.mcpServers | Add-Member -MemberType NoteProperty -Name "vibetter" -Value $vibetter -Force
 
-    $data | ConvertTo-Json -Depth 10 | Out-File $ConfigPath -Encoding utf8
+    $json = $data | ConvertTo-Json -Depth 10
+    [System.IO.File]::WriteAllText($ConfigPath, $json)
     Write-Success "$IdeName configured!"
 }
 

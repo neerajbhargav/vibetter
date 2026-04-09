@@ -74,7 +74,7 @@ VERIFY=$("$PYTHON_BIN" -c "
 try:
     from google import genai
     c = genai.Client(api_key='$API_KEY')
-    r = c.models.generate_content(model='gemini-2.0-flash', contents='Say: OK')
+    r = c.models.generate_content(model='gemini-2.0-flash-lite', contents='Say: OK')
     print('OK')
 except Exception as e:
     print(f'FAIL:{e}')

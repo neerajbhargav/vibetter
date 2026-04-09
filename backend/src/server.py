@@ -1,4 +1,5 @@
 import os
+import re
 import json
 from fastmcp import FastMCP
 from typing import Dict, Any
@@ -69,15 +70,31 @@ async def get_blueprint_ui() -> str:
     Interactive Vue Flow map of your codebase dependency graph.
     Call generate_blueprint first, then open this resource to visualize it.
     """
-    dist_path = os.path.join(
-        os.path.dirname(__file__), "..", "..", "frontend", "dist", "index.html"
+    dist_dir = os.path.join(
+        os.path.dirname(__file__), "..", "..", "frontend", "dist"
     )
+    index_path = os.path.join(dist_dir, "index.html")
 
-    if not os.path.exists(dist_path):
+    if not os.path.exists(index_path):
         return "<h1>Frontend build missing.</h1><p>Run <code>npm run build</code> in the /frontend directory.</p>"
 
-    with open(dist_path, "r", encoding="utf-8") as f:
+    with open(index_path, "r", encoding="utf-8") as f:
         html = f.read()
+
+    # Inline CSS assets so the HTML is fully self-contained (MCP resources
+    # are served as raw strings — external file references won't resolve).
+    for css_match in re.finditer(r'<link[^>]+href="(/assets/[^"]+\.css)"[^>]*>', html):
+        css_file = os.path.join(dist_dir, css_match.group(1).lstrip("/"))
+        if os.path.exists(css_file):
+            with open(css_file, "r", encoding="utf-8") as f:
+                html = html.replace(css_match.group(0), f"<style>{f.read()}</style>")
+
+    # Inline JS assets
+    for js_match in re.finditer(r'<script[^>]+src="(/assets/[^"]+\.js)"[^>]*></script>', html):
+        js_file = os.path.join(dist_dir, js_match.group(1).lstrip("/"))
+        if os.path.exists(js_file):
+            with open(js_file, "r", encoding="utf-8") as f:
+                html = html.replace(js_match.group(0), f'<script type="module">{f.read()}</script>')
 
     # Inject the latest blueprint data so the UI doesn't need a network call
     import brain.scholar as scholar_module
