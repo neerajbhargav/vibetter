@@ -78,7 +78,7 @@ async def _call_gemini(prompt: str, json_mode: bool, models: list) -> str:
             if _is_transient(err) or _is_model_missing(err):
                 last_error = e
                 continue
-            raise
+            return f"Error calling Gemini ({model}): {err}"
 
     return f"Error: All Gemini models exhausted. Details: {last_error}"
 
@@ -117,7 +117,7 @@ async def _call_openai(prompt: str, json_mode: bool, models: list) -> str:
             if _is_transient(err) or _is_model_missing(err):
                 last_error = e
                 continue
-            raise
+            return f"Error calling OpenAI ({model}): {err}"
 
     return f"Error: All OpenAI models exhausted. Details: {last_error}"
 
@@ -160,7 +160,7 @@ async def _call_anthropic(prompt: str, json_mode: bool, models: list) -> str:
             if _is_transient(err) or _is_model_missing(err):
                 last_error = e
                 continue
-            raise
+            return f"Error calling Anthropic ({model}): {err}"
 
     return f"Error: All Anthropic models exhausted. Details: {last_error}"
 
@@ -194,7 +194,7 @@ async def _call_ollama(prompt: str, json_mode: bool, models: list) -> str:
             if _is_transient(err) or _is_model_missing(err):
                 last_error = e
                 continue
-            raise
+            return f"Error calling Ollama ({model}): {err}"
 
     return f"Error: All Ollama models exhausted. Is Ollama running? Details: {last_error}"
 
