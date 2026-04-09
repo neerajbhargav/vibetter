@@ -58,7 +58,7 @@ generate_audio_overview("How does data flow from the frontend to the database?")
 ## How It Works
 
 - **Master Context Engine**: Recursively parses your codebase into a single context payload on startup. A Watchdog observer auto-refreshes it on every file save — so Gemini always sees your latest code.
-- **Model Fallback Chain**: If `gemini-2.0-flash` hits quota limits, automatically retries with `gemini-1.5-flash` then `gemini-1.5-pro`. No crashes.
+- **Model Fallback Chain**: If `gemini-2.0-flash-lite` hits quota limits, automatically retries with `gemini-2.5-flash` then `gemini-1.5-flash`. No crashes.
 - **Targeted Context**: For file-specific questions, loads the target file first and fills remaining context budget with related files — faster and cheaper than always sending everything.
 - **Blueprint Cache**: `generate_blueprint()` caches its result. Opening `ui://blueprint` immediately serves the visualization without a second Gemini call.
 

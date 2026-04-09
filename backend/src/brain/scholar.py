@@ -3,6 +3,7 @@ import time
 import json
 import asyncio
 import subprocess
+import threading
 from gtts import gTTS
 from typing import Dict, Any, Optional
 from watchdog.observers import Observer
@@ -25,10 +26,16 @@ client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 
 class MasterContextManager(FileSystemEventHandler):
+    IGNORED_DIRS = frozenset((
+        'node_modules', '.git', '__pycache__', 'dist', '.venv', 'venv', '.next', 'build', 'out'
+    ))
+
     def __init__(self, codebase_path: str):
         self.codebase_path = os.path.abspath(codebase_path)
         self.master_context = ""
         self._file_contents: Dict[str, str] = {}
+        self._lock = threading.Lock()
+        self._last_rebuild = 0.0
         self.build_context()
 
         # Watchdog auto-syncs context on file save
@@ -39,11 +46,9 @@ class MasterContextManager(FileSystemEventHandler):
     def build_context(self):
         """Recursively parses text-based code files into one context payload."""
         parts = []
-        self._file_contents = {}
+        new_contents: Dict[str, str] = {}
         for root, dirs, files in os.walk(self.codebase_path):
-            dirs[:] = [d for d in dirs if d not in (
-                'node_modules', '.git', '__pycache__', 'dist', '.venv', 'venv', '.next', 'build', 'out'
-            )]
+            dirs[:] = [d for d in dirs if d not in self.IGNORED_DIRS]
             for file in files:
                 if file.endswith(('.py', '.js', '.jsx', '.ts', '.tsx', '.vue', '.md', '.json',
                                   '.html', '.css', '.env.example', '.yaml', '.yml', '.toml')):
@@ -51,26 +56,33 @@ class MasterContextManager(FileSystemEventHandler):
                     try:
                         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                             content = f.read()
-                            self._file_contents[filepath] = content
+                            new_contents[filepath] = content
                             rel = os.path.relpath(filepath, self.codebase_path)
                             parts.append(f"--- FILE: {rel} ---\n{content}\n")
                     except Exception:
                         pass
-        self.master_context = "\n".join(parts)
+        # Swap atomically under lock to avoid readers seeing partial state
+        with self._lock:
+            self._file_contents = new_contents
+            self.master_context = "\n".join(parts)
 
     def get_targeted_context(self, file_path: str, max_chars: int = 40000) -> str:
         """Returns context focused on a specific file + closely related files."""
         target_abs = os.path.join(self.codebase_path, file_path) if not os.path.isabs(file_path) else file_path
         parts = []
 
+        # Snapshot under lock to avoid reading mid-rebuild
+        with self._lock:
+            file_contents = dict(self._file_contents)
+
         # Always include the target file first
-        if target_abs in self._file_contents:
+        if target_abs in file_contents:
             rel = os.path.relpath(target_abs, self.codebase_path)
-            parts.append(f"--- TARGET FILE: {rel} ---\n{self._file_contents[target_abs]}\n")
+            parts.append(f"--- TARGET FILE: {rel} ---\n{file_contents[target_abs]}\n")
 
         # Fill remaining budget with the rest of the codebase
         budget = max_chars - sum(len(p) for p in parts)
-        for path, content in self._file_contents.items():
+        for path, content in file_contents.items():
             if path == target_abs:
                 continue
             chunk = f"--- FILE: {os.path.relpath(path, self.codebase_path)} ---\n{content}\n"
@@ -82,8 +94,22 @@ class MasterContextManager(FileSystemEventHandler):
         return "\n".join(parts)
 
     def on_modified(self, event):
-        if not event.is_directory and not event.src_path.endswith('.tmp'):
-            self.build_context()
+        if event.is_directory:
+            return
+        # Skip temp files and changes inside ignored directories (e.g. .git/)
+        path = event.src_path
+        if path.endswith(('.tmp', '.swp', '~')):
+            return
+        rel = os.path.relpath(path, self.codebase_path)
+        parts = rel.replace("\\", "/").split("/")
+        if any(p in self.IGNORED_DIRS for p in parts):
+            return
+        # Debounce: skip if last rebuild was less than 2 seconds ago
+        now = time.time()
+        if now - self._last_rebuild < 2.0:
+            return
+        self._last_rebuild = now
+        self.build_context()
 
 
 context_manager = MasterContextManager(VIBETTER_CODEBASE_PATH)
@@ -95,7 +121,7 @@ _blueprint_cache: Optional[Dict[str, Any]] = None
 async def _call_gemini(prompt: str, json_mode: bool = False) -> str:
     """
     Calls Gemini with automatic model fallback on quota/rate errors.
-    Tries gemini-2.0-flash → gemini-1.5-flash → gemini-1.5-pro.
+    Tries gemini-2.0-flash-lite → gemini-2.5-flash → gemini-1.5-flash.
     """
     if not client:
         return "Error: GEMINI_API_KEY is not set. Add it to backend/.env"
