@@ -2,18 +2,18 @@
 $ErrorActionPreference = 'Stop'
 
 function Write-Info    { param($m) Write-Host $m -ForegroundColor Cyan }
-function Write-Success { param($m) Write-Host "✅ $m" -ForegroundColor Green }
-function Write-Warn    { param($m) Write-Host "⚠️  $m" -ForegroundColor Yellow }
-function Write-Err     { param($m) Write-Host "❌ $m" -ForegroundColor Red }
+function Write-Success { param($m) Write-Host "[OK] $m" -ForegroundColor Green }
+function Write-Warn    { param($m) Write-Host "[WARN] $m" -ForegroundColor Yellow }
+function Write-Err     { param($m) Write-Host "[ERR] $m" -ForegroundColor Red }
 
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║        VIBETTER - One-Line Install       ║" -ForegroundColor Cyan
-Write-Host "║   Cognitive Codebase Bridge for Gemini   ║" -ForegroundColor Cyan
-Write-Host "╚══════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "+------------------------------------------+" -ForegroundColor Cyan
+Write-Host "|        VIBETTER - One-Line Install       |" -ForegroundColor Cyan
+Write-Host "|   Cognitive Codebase Bridge for Gemini   |" -ForegroundColor Cyan
+Write-Host "+------------------------------------------+" -ForegroundColor Cyan
 Write-Host ""
 
-# ─── 1. Install / Update ───────────────────────────────────────────────────────
+# --- 1. Install / Update -------------------------------------------------------
 $InstallDir = "$env:USERPROFILE\.vibetter"
 
 if (Test-Path "$InstallDir\.git") {
@@ -40,7 +40,7 @@ if (Test-Path "$InstallDir\.git") {
     git clone -q https://github.com/neerajbhargav/vibetter.git $InstallDir
 }
 
-# ─── 2. Python venv ────────────────────────────────────────────────────────────
+# --- 2. Python venv ------------------------------------------------------------
 Write-Info "Setting up Python environment..."
 
 $PythonCmd = $null
@@ -69,7 +69,7 @@ if (-not (Test-Path $PythonBin)) {
 & $PythonBin -m pip install -r "$InstallDir\backend\requirements.txt" -q
 Write-Success "Python environment ready"
 
-# ─── 3. Gemini API Key ─────────────────────────────────────────────────────────
+# --- 3. Gemini API Key ---------------------------------------------------------
 Write-Host ""
 Write-Info "Get a free Gemini API key at: https://aistudio.google.com/apikey"
 Write-Host ""
@@ -102,7 +102,7 @@ if ($Verify -eq 'OK') {
 if (-not (Test-Path "$InstallDir\backend")) { New-Item -ItemType Directory -Path "$InstallDir\backend" | Out-Null }
 "GEMINI_API_KEY=$ApiKey" | Out-File -FilePath "$InstallDir\backend\.env" -Encoding utf8
 
-# ─── 4. Auto-detect and register IDEs ─────────────────────────────────────────
+# --- 4. Auto-detect and register IDEs -----------------------------------------
 Write-Host ""
 Write-Info "Detecting installed IDEs..."
 $Registered = $false
@@ -184,11 +184,11 @@ if (-not $Registered) {
     Write-Host "  { `"mcpServers`": { `"vibetter`": { `"command`": `"$PythonBin`", `"args`": [`"-u`", `"$InstallDir\backend\src\server.py`"], `"env`": { `"GEMINI_API_KEY`": `"$ApiKey`" } } } }" -ForegroundColor Gray
 }
 
-# ─── 5. Done ───────────────────────────────────────────────────────────────────
+# --- 5. Done -------------------------------------------------------------------
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║         VIBETTER is ready to use!        ║" -ForegroundColor Green
-Write-Host "╚══════════════════════════════════════════╝" -ForegroundColor Green
+Write-Host "+------------------------------------------+" -ForegroundColor Green
+Write-Host "|         VIBETTER is ready to use!        |" -ForegroundColor Green
+Write-Host "+------------------------------------------+" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Open any project in your IDE and use these tools:" -ForegroundColor White
 Write-Host ""

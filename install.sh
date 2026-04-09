@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 set -e
 
-# ─── Colors ────────────────────────────────────────────────────────────────────
+# --- Colors --------------------------------------------------------------------
 CYAN='\033[0;36m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 info()    { echo -e "${CYAN}$1${NC}"; }
-success() { echo -e "${GREEN}✅ $1${NC}"; }
-warn()    { echo -e "${YELLOW}⚠️  $1${NC}"; }
-error()   { echo -e "${RED}❌ $1${NC}"; }
+success() { echo -e "${GREEN}[OK] $1${NC}"; }
+warn()    { echo -e "${YELLOW}[WARN] $1${NC}"; }
+error()   { echo -e "${RED}[ERR] $1${NC}"; }
 
 echo ""
-echo -e "${CYAN}╔══════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║        VIBETTER - One-Line Install       ║${NC}"
-echo -e "${CYAN}║   Cognitive Codebase Bridge for Gemini   ║${NC}"
-echo -e "${CYAN}╚══════════════════════════════════════════╝${NC}"
+echo -e "${CYAN}+------------------------------------------+${NC}"
+echo -e "${CYAN}|        VIBETTER - One-Line Install       |${NC}"
+echo -e "${CYAN}|   Cognitive Codebase Bridge for Gemini   |${NC}"
+echo -e "${CYAN}+------------------------------------------+${NC}"
 echo ""
 
-# ─── 1. Install/Update ─────────────────────────────────────────────────────────
+# --- 1. Install/Update ---------------------------------------------------------
 INSTALL_DIR="$HOME/.vibetter"
 
 if [ -d "$INSTALL_DIR/.git" ]; then
@@ -31,7 +31,7 @@ else
     git clone -q https://github.com/neerajbhargav/vibetter.git "$INSTALL_DIR"
 fi
 
-# ─── 2. Python venv ────────────────────────────────────────────────────────────
+# --- 2. Python venv ------------------------------------------------------------
 info "Setting up Python environment..."
 
 PYTHON_CMD=""
@@ -57,7 +57,7 @@ fi
 "$PYTHON_BIN" -m pip install -r "$INSTALL_DIR/backend/requirements.txt" -q
 success "Python environment ready"
 
-# ─── 3. Gemini API Key ─────────────────────────────────────────────────────────
+# --- 3. Gemini API Key ---------------------------------------------------------
 echo ""
 info "Get a free Gemini API key at: https://aistudio.google.com/apikey"
 echo ""
@@ -90,7 +90,7 @@ fi
 mkdir -p "$INSTALL_DIR/backend"
 echo "GEMINI_API_KEY=$API_KEY" > "$INSTALL_DIR/backend/.env"
 
-# ─── 4. Auto-detect and register IDEs ─────────────────────────────────────────
+# --- 4. Auto-detect and register IDEs -----------------------------------------
 echo ""
 info "Detecting installed IDEs..."
 REGISTERED=false
@@ -180,11 +180,11 @@ if [ "$REGISTERED" = false ]; then
     echo '  }'
 fi
 
-# ─── 5. Done ───────────────────────────────────────────────────────────────────
+# --- 5. Done -------------------------------------------------------------------
 echo ""
-echo -e "${GREEN}╔══════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║         VIBETTER is ready to use!        ║${NC}"
-echo -e "${GREEN}╚══════════════════════════════════════════╝${NC}"
+echo -e "${GREEN}+------------------------------------------+${NC}"
+echo -e "${GREEN}|         VIBETTER is ready to use!        |${NC}"
+echo -e "${GREEN}+------------------------------------------+${NC}"
 echo ""
 echo "  Open any project in your IDE and use these tools:"
 echo ""
