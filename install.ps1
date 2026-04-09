@@ -8,7 +8,7 @@ function Write-Err     { param($m) Write-Host "❌ $m" -ForegroundColor Red }
 
 Write-Host ""
 Write-Host "╔══════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║        VIBETTER — One-Line Install       ║" -ForegroundColor Cyan
+Write-Host "║        VIBETTER - One-Line Install       ║" -ForegroundColor Cyan
 Write-Host "║   Cognitive Codebase Bridge for Gemini   ║" -ForegroundColor Cyan
 Write-Host "╚══════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
@@ -142,7 +142,7 @@ if (Get-Command claude -ErrorAction SilentlyContinue) {
         claude mcp add vibetter -s user `
             -e "GEMINI_API_KEY=$ApiKey" `
             -- "$PythonBin" -u "$InstallDir\backend\src\server.py" 2>$null
-        Write-Success "Claude Code — auto-registered (no restart needed)"
+        Write-Success "Claude Code - auto-registered (no restart needed)"
         $Registered = $true
     } catch {
         Write-Warn "Claude Code detected but auto-registration failed."
@@ -192,9 +192,9 @@ Write-Host "╚═════════════════════�
 Write-Host ""
 Write-Host "  Open any project in your IDE and use these tools:" -ForegroundColor White
 Write-Host ""
-Write-Host "  explain_last_change()        — understand what AI just generated" -ForegroundColor Cyan
-Write-Host "  scholar_explain(file, q)     — explain any file or function" -ForegroundColor Cyan
-Write-Host "  debug_error_in_context(err)  — paste an error, get a fix" -ForegroundColor Cyan
-Write-Host "  generate_blueprint()         — visualize your codebase map" -ForegroundColor Cyan
-Write-Host "  generate_audio_overview(q)   — listen to a code walkthrough" -ForegroundColor Cyan
+Write-Host "  explain_last_change()        - understand what AI just generated" -ForegroundColor Cyan
+Write-Host "  scholar_explain(file, q)     - explain any file or function" -ForegroundColor Cyan
+Write-Host "  debug_error_in_context(err)  - paste an error, get a fix" -ForegroundColor Cyan
+Write-Host "  generate_blueprint()         - visualize your codebase map" -ForegroundColor Cyan
+Write-Host "  generate_audio_overview(q)   - listen to a code walkthrough" -ForegroundColor Cyan
 Write-Host ""

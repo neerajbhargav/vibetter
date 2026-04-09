@@ -10,7 +10,7 @@ error()   { echo -e "${RED}❌ $1${NC}"; }
 
 echo ""
 echo -e "${CYAN}╔══════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║        VIBETTER — One-Line Install       ║${NC}"
+echo -e "${CYAN}║        VIBETTER - One-Line Install       ║${NC}"
 echo -e "${CYAN}║   Cognitive Codebase Bridge for Gemini   ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════════╝${NC}"
 echo ""
@@ -119,14 +119,14 @@ json.dump(data, open(path, 'w'), indent=2)
 " && success "$ide_name configured!" || warn "Failed to write $ide_name config"
 }
 
-# Claude Code (auto-register via CLI — works immediately, no restart needed)
+# Claude Code (auto-register via CLI - works immediately, no restart needed)
 if command -v claude &>/dev/null; then
     # Remove stale entry first, then add fresh
     claude mcp remove vibetter -s user 2>/dev/null || true
     claude mcp add vibetter -s user \
         -e GEMINI_API_KEY="$API_KEY" \
         -- "$PYTHON_BIN" -u "$INSTALL_DIR/backend/src/server.py" 2>/dev/null \
-        && success "Claude Code — auto-registered (no restart needed)" \
+        && success "Claude Code - auto-registered (no restart needed)" \
         && REGISTERED=true \
         || warn "Claude Code detected but auto-registration failed. Run manually: claude mcp add vibetter -s user -e GEMINI_API_KEY=$API_KEY -- $PYTHON_BIN -u $INSTALL_DIR/backend/src/server.py"
 fi
@@ -161,7 +161,7 @@ if command -v code &>/dev/null; then
     REGISTERED=true
 fi
 
-# No IDE detected — print manual instructions
+# No IDE detected - print manual instructions
 if [ "$REGISTERED" = false ]; then
     echo ""
     warn "No supported IDE auto-detected. Add VIBETTER manually:"
@@ -188,9 +188,9 @@ echo -e "${GREEN}╚════════════════════
 echo ""
 echo "  Open any project in your IDE and use these tools:"
 echo ""
-echo -e "  ${CYAN}explain_last_change()${NC}        — understand what AI just generated"
-echo -e "  ${CYAN}scholar_explain(file, q)${NC}     — explain any file or function"
-echo -e "  ${CYAN}debug_error_in_context(err)${NC}  — paste an error, get a fix"
-echo -e "  ${CYAN}generate_blueprint()${NC}         — visualize your codebase map"
-echo -e "  ${CYAN}generate_audio_overview(q)${NC}   — listen to a code walkthrough"
+echo -e "  ${CYAN}explain_last_change()${NC}        - understand what AI just generated"
+echo -e "  ${CYAN}scholar_explain(file, q)${NC}     - explain any file or function"
+echo -e "  ${CYAN}debug_error_in_context(err)${NC}  - paste an error, get a fix"
+echo -e "  ${CYAN}generate_blueprint()${NC}         - visualize your codebase map"
+echo -e "  ${CYAN}generate_audio_overview(q)${NC}   - listen to a code walkthrough"
 echo ""
