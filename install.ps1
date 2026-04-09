@@ -57,11 +57,11 @@ if (-not $PythonCmd) {
 $PythonBin = "$InstallDir\venv\Scripts\python.exe"
 
 if (-not (Test-Path $PythonBin)) {
-    & $PythonCmd -m venv "$InstallDir\venv"
+    & $PythonCmd -m venv "$InstallDir\venv" 2>$null
 }
 
-& $PythonBin -m pip install --upgrade pip -q
-& $PythonBin -m pip install -r "$InstallDir\backend\requirements.txt" -q
+& $PythonBin -m pip install --upgrade pip -q 2>$null
+& $PythonBin -m pip install -r "$InstallDir\backend\requirements.txt" -q 2>$null
 Write-Success "Python environment ready"
 
 # --- 3. AI Provider Selection --------------------------------------------------
@@ -86,7 +86,7 @@ switch ($Choice) {
 
 # Install provider SDK
 Write-Info "Installing $Provider SDK..."
-& $PythonBin -m pip install $Sdk -q
+& $PythonBin -m pip install $Sdk -q 2>$null
 Write-Success "$Provider SDK installed"
 
 # Collect API key (skip for Ollama)
