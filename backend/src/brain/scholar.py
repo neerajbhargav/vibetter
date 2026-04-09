@@ -19,7 +19,7 @@ from config import GEMINI_API_KEY, VIBETTER_CODEBASE_PATH
 FALLBACK_MODELS = [
     os.getenv("VIBETTER_MODEL", "gemini-2.0-flash-lite"),
     "gemini-2.5-flash",
-    "gemini-1.5-flash",
+    "gemini-2.0-flash",
 ]
 
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
@@ -121,7 +121,7 @@ _blueprint_cache: Optional[Dict[str, Any]] = None
 async def _call_gemini(prompt: str, json_mode: bool = False) -> str:
     """
     Calls Gemini with automatic model fallback on quota/rate errors.
-    Tries gemini-2.0-flash-lite → gemini-2.5-flash → gemini-1.5-flash.
+    Tries gemini-2.0-flash-lite → gemini-2.5-flash → gemini-2.0-flash.
     """
     if not client:
         return "Error: GEMINI_API_KEY is not set. Add it to backend/.env"
@@ -138,9 +138,9 @@ async def _call_gemini(prompt: str, json_mode: bool = False) -> str:
             return response.text
         except Exception as e:
             err = str(e)
-            # Catch quota, rate limit, and model availability errors — try next model
-            if any(x in err for x in ("429", "404", "NOT_FOUND", "RESOURCE_EXHAUSTED")) \
-               or any(x in err.lower() for x in ("quota", "rate", "no longer available", "deprecated")):
+            # Catch quota, rate limit, capacity, and model availability errors — try next model
+            if any(x in err for x in ("429", "404", "503", "NOT_FOUND", "RESOURCE_EXHAUSTED", "UNAVAILABLE")) \
+               or any(x in err.lower() for x in ("quota", "rate", "no longer available", "deprecated", "high demand", "overloaded")):
                 last_error = e
                 continue
             raise  # non-transient errors bubble up immediately
