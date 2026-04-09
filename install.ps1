@@ -31,7 +31,7 @@ if (Test-Path "$InstallDir\.git") {
     # Re-exec the freshly updated script from disk so any installer fixes take effect.
     # When run via iex the old in-memory copy would otherwise keep running.
     $LocalScript = "$InstallDir\install.ps1"
-    if (Test-Path $LocalScript) {
+    if ((-not $MyInvocation.MyCommand.Path) -and (Test-Path $LocalScript)) {
         & $LocalScript
         exit
     }
