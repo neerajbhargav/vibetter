@@ -8,21 +8,11 @@ from gtts import gTTS
 from typing import Dict, Any, Optional
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from google import genai
-from google.genai import types as genai_types
 import sys
 import os.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import GEMINI_API_KEY, VIBETTER_CODEBASE_PATH
-
-# Model fallback chain — tries each in order on quota/rate/availability errors
-FALLBACK_MODELS = [
-    os.getenv("VIBETTER_MODEL", "gemini-2.0-flash-lite"),
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-]
-
-client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+from config import VIBETTER_CODEBASE_PATH
+from brain.providers import call_llm
 
 
 class MasterContextManager(FileSystemEventHandler):
@@ -118,36 +108,6 @@ context_manager = MasterContextManager(VIBETTER_CODEBASE_PATH)
 _blueprint_cache: Optional[Dict[str, Any]] = None
 
 
-async def _call_gemini(prompt: str, json_mode: bool = False) -> str:
-    """
-    Calls Gemini with automatic model fallback on quota/rate errors.
-    Tries gemini-2.0-flash-lite → gemini-2.5-flash → gemini-2.0-flash.
-    """
-    if not client:
-        return "Error: GEMINI_API_KEY is not set. Add it to backend/.env"
-
-    config = genai_types.GenerateContentConfig(response_mime_type="application/json") if json_mode else None
-    last_error = None
-
-    for model in FALLBACK_MODELS:
-        try:
-            kwargs = {"model": model, "contents": prompt}
-            if config:
-                kwargs["config"] = config
-            response = await asyncio.to_thread(client.models.generate_content, **kwargs)
-            return response.text
-        except Exception as e:
-            err = str(e)
-            # Catch quota, rate limit, capacity, and model availability errors — try next model
-            if any(x in err for x in ("429", "404", "503", "NOT_FOUND", "RESOURCE_EXHAUSTED", "UNAVAILABLE")) \
-               or any(x in err.lower() for x in ("quota", "rate", "no longer available", "deprecated", "high demand", "overloaded")):
-                last_error = e
-                continue
-            raise  # non-transient errors bubble up immediately
-
-    return f"Error: All Gemini models hit quota limits. Try again later or enable billing at console.cloud.google.com/billing\n\nDetails: {last_error}"
-
-
 # ─── Core Tools ────────────────────────────────────────────────────────────────
 
 async def ask_gemini_with_context(question: str, target_file: str = None) -> str:
@@ -177,7 +137,7 @@ Question: {question}
 
 Answer with clear sections: **What it does**, **How it works**, **Why it's written this way**."""
 
-    return await _call_gemini(prompt)
+    return await call_llm(prompt)
 
 
 async def generate_architecture_json() -> Dict[str, Any]:
@@ -196,7 +156,7 @@ Requirements:
 Codebase:
 {context_manager.master_context[:50000]}"""
 
-    text = await _call_gemini(prompt, json_mode=True)
+    text = await call_llm(prompt, json_mode=True)
     try:
         result = json.loads(text)
         _blueprint_cache = result  # update the UI cache
@@ -229,7 +189,7 @@ Codebase context:
 Topic: {question}"""
 
     try:
-        transcript = await _call_gemini(prompt)
+        transcript = await call_llm(prompt)
 
         output_dir = os.path.join(os.path.dirname(__file__), "..", "..", "outputs")
         os.makedirs(output_dir, exist_ok=True)
@@ -299,7 +259,7 @@ Git diff:
 {diff[:10000]}
 ```"""
 
-    return await _call_gemini(prompt)
+    return await call_llm(prompt)
 
 
 async def debug_error(error_message: str, file_path: str = None) -> str:
@@ -342,4 +302,4 @@ Their codebase:
 
 Be direct and kind. They are learning."""
 
-    return await _call_gemini(prompt)
+    return await call_llm(prompt)
