@@ -41,16 +41,16 @@ if (Test-Path "$InstallDir\.git") {
 Write-Info "Setting up Python environment..."
 
 $PythonCmd = $null
-foreach ($cmd in @('python', 'python3', 'py')) {
+foreach ($cmd in @('python3.14', 'python3.13', 'python3.12', 'python3.11', 'python3.10', 'python3', 'python', 'py')) {
     try {
         $cmdPath = (Get-Command $cmd -ErrorAction SilentlyContinue).Source
-        $ver = & $cmd -c "import sys; print(sys.version_info >= (3,9))" 2>$null
+        $ver = & $cmd -c "import sys; print(sys.version_info >= (3,10))" 2>$null
         if ($ver -eq 'True') { $PythonCmd = $cmd; break }
     } catch {}
 }
 
 if (-not $PythonCmd) {
-    Write-Err "Python 3.9+ is required. Install from https://python.org and re-run."
+    Write-Err "Python 3.10 or newer is required (FastMCP 3 needs it). Install from https://python.org and re-run."
     exit 1
 }
 
