@@ -34,15 +34,15 @@ fi
 info "Setting up Python environment..."
 
 PYTHON_CMD=""
-for cmd in python3 python python3.11 python3.10 python3.9; do
-    if command -v "$cmd" &>/dev/null && "$cmd" -c "import sys; exit(0 if sys.version_info >= (3,9) else 1)" 2>/dev/null; then
+for cmd in python3.14 python3.13 python3.12 python3.11 python3.10 python3 python; do
+    if command -v "$cmd" &>/dev/null && "$cmd" -c "import sys; exit(0 if sys.version_info >= (3,10) else 1)" 2>/dev/null; then
         PYTHON_CMD="$cmd"
         break
     fi
 done
 
 if [ -z "$PYTHON_CMD" ]; then
-    error "Python 3.9+ is required. Install it from https://python.org and re-run."
+    error "Python 3.10 or newer is required (FastMCP 3 needs it). Install from https://python.org and re-run."
     exit 1
 fi
 
