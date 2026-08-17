@@ -1,8 +1,24 @@
-# VIBETTER -- Cognitive Codebase Bridge
+# VIBETTER
 
-VIBETTER is an MCP server that plugs into your AI coding IDE (Claude Code, Cursor, Claude Desktop, Windsurf) and helps you actually **understand** the code your AI tools are generating -- in real time, as you build.
+**Understand the code your AI just wrote.**
 
-Built for vibe coders who want to learn while doing, not just copy-paste.
+VIBETTER is an MCP server for Claude Code, Cursor, Claude Desktop and Windsurf. It reads your
+actual codebase and answers questions about it with `file:line` citations, explains every diff
+your AI tool produces, debugs errors in context, and maps your dependency graph.
+
+[![License: MIT](https://img.shields.io/github/license/neerajbhargav/vibetter)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
+[![FastMCP 3.0](https://img.shields.io/badge/MCP-FastMCP%203.0-6E56CF)](https://github.com/jlowin/fastmcp)
+[![Providers](https://img.shields.io/badge/providers-Anthropic%20%7C%20OpenAI%20%7C%20Gemini%20%7C%20Ollama-444)](#supported-ai-providers)
+
+## The problem
+
+AI coding tools ship code faster than you can read it. You accept a diff, the tests pass, and
+six weeks later nobody on the team can explain why that file exists.
+
+VIBETTER closes that loop without slowing you down. It runs inside the same IDE session, reads
+the same repo, and grounds every answer in real source lines instead of guessing from a summary.
+Ask it what changed and why, and get an answer you can verify.
 
 ---
 
@@ -80,7 +96,7 @@ generate_audio_overview("How does data flow from the frontend to the database?")
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.10 or newer (FastMCP 3 requires it; 3.9 will fail at install)
 - Git
 - An API key for your chosen provider (or Ollama installed locally)
 - Any MCP-compatible IDE: Claude Code, Cursor, Claude Desktop, Windsurf, or VS Code with Roo/Cline
@@ -126,3 +142,15 @@ For Cursor / Claude Desktop / Windsurf, add to your `mcp.json`:
   }
 }
 ```
+
+---
+
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+## Author
+
+Built by [Neeraj Bhargav Rondla](https://neerajbhargav.com), applied AI engineer.
+More MCP and agent tooling: [omni-context](https://github.com/neerajbhargav/omni-context),
+[context-refinery](https://github.com/neerajbhargav/context-refinery).
