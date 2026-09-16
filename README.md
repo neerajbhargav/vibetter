@@ -3,8 +3,9 @@
 **Understand the code your AI just wrote.**
 
 VIBETTER is an MCP server for Claude Code, Cursor, Claude Desktop and Windsurf. It reads your
-actual codebase and answers questions about it with `file:line` citations, explains every diff
-your AI tool produces, debugs errors in context, and maps your dependency graph.
+actual codebase and answers questions about it with model-generated `file:line` citations,
+explains diffs, suggests fixes in context, and generates a dependency graph from bounded source context.
+Citations are requested in the prompt but are not programmatically validated; verify them against the source.
 
 [![License: MIT](https://img.shields.io/github/license/neerajbhargav/vibetter)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
@@ -17,7 +18,7 @@ AI coding tools ship code faster than you can read it. You accept a diff, the te
 six weeks later nobody on the team can explain why that file exists.
 
 VIBETTER closes that loop without slowing you down. It runs inside the same IDE session, reads
-the same repo, and grounds every answer in real source lines instead of guessing from a summary.
+the same repo, and supplies source context to the model rather than only a summary.
 Ask it what changed and why, and get an answer you can verify.
 
 ---
@@ -63,19 +64,19 @@ Set `VIBETTER_MODEL` in your `.env` to override the default model for your provi
 Run this right after your AI tool makes edits. Reads your git diff and explains exactly what changed, why it works, and what programming concepts it demonstrates.
 
 ### `scholar_explain(file_path, question)`
-Ask any "why" or "how" question about a specific file. Gets a precise, source-grounded answer with exact file:line citations.
+Ask any "why" or "how" question about a specific file. Supplies file context and asks the model for an explanation with file:line citations; citation accuracy is not validated.
 ```
 scholar_explain("src/auth.js", "Why is the token stored in httpOnly cookies instead of localStorage?")
 ```
 
 ### `debug_error_in_context(error_message, file_path?)`
-Paste any error message. VIBETTER reads your codebase, finds the exact cause, and gives you a concrete fix -- not a generic Stack Overflow answer.
+Paste any error message. VIBETTER supplies codebase context and asks the model to identify a cause and suggest a concrete fix; verify the diagnosis and cited lines.
 ```
 debug_error_in_context("TypeError: Cannot read properties of undefined (reading 'map')")
 ```
 
 ### `generate_blueprint()`
-Generates an interactive dependency graph of your entire codebase using structured AI output. Open `ui://blueprint` in your IDE to visualize it.
+Generates an interactive, model-inferred dependency graph from the first 50,000 characters of the assembled codebase context. This is not an exhaustive or statically validated dependency graph. Open `ui://blueprint` in your IDE to visualize it.
 
 ### `generate_audio_overview(question, file_path?)`
 Creates an MP3 podcast-style walkthrough of your codebase. Great for understanding architecture away from your screen.
@@ -89,7 +90,7 @@ generate_audio_overview("How does data flow from the frontend to the database?")
 
 - **Master Context Engine**: Recursively parses your codebase into a single context payload on startup. A Watchdog observer auto-refreshes it on every file save -- so your AI always sees your latest code.
 - **Multi-Provider Support**: Choose between Gemini, OpenAI, Claude, or Ollama. Each provider has its own model fallback chain -- if one model hits quota, the next is tried automatically.
-- **Targeted Context**: For file-specific questions, loads the target file first and fills remaining context budget with related files -- faster and cheaper than always sending everything.
+- **Targeted Context**: For file-specific questions, includes the target file first, then adds files in filesystem traversal order until the next file would exceed the remaining character budget. Additional files are not relevance-ranked; the target file itself is not truncated to that budget.
 - **Blueprint Cache**: `generate_blueprint()` caches its result. Opening `ui://blueprint` immediately serves the visualization without a second AI call.
 
 ---
