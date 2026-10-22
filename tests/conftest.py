@@ -54,7 +54,13 @@ PROVIDER_ENV = (
     "ANTHROPIC_API_KEY",
     "OLLAMA_HOST",
     "OLLAMA_BASE_URL",
+    "VIBETTER_HOME",
+    "VIBETTER_TRACE",
+    "VIBETTER_OTEL",
+    "VIBETTER_STRICT",
+    "VIBETTER_OLLAMA_NUM_CTX",
 )
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 @pytest.fixture(scope="session")
@@ -67,7 +73,7 @@ def _home(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.fixture(autouse=True)
-def isolated_env(_home: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+def isolated_env(_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Keep the user's real keys, HOME and git config out of every test."""
     monkeypatch.setenv("HOME", str(_home))
     monkeypatch.setenv("USERPROFILE", str(_home))
@@ -75,6 +81,10 @@ def isolated_env(_home: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
     for name in PROVIDER_ENV:
         monkeypatch.delenv(name, raising=False)
+    # Never download an embedding model in tests, even if the dense extra is installed.
+    monkeypatch.setenv("VIBETTER_DENSE", "0")
+    # Traces and audio go to a fresh ~/.vibetter per test.
+    monkeypatch.setenv("VIBETTER_HOME", str(tmp_path / "vibetter-home"))
     return _home
 
 
@@ -154,6 +164,20 @@ def plain_dir(tmp_path: Path, _templates: tuple[Path, Path]) -> Path:
     return Path(shutil.copytree(_templates[0], tmp_path / "plain", symlinks=True))
 
 
+@pytest.fixture
+def shop(tmp_path: Path) -> Path:
+    """A copy of tests/fixtures/shop: a synthetic Python + Vue bookshop."""
+    return Path(shutil.copytree(FIXTURES / "shop", tmp_path / "shop"))
+
+
+def line_of(root: Path, rel: str, needle: str) -> int:
+    """The 1-based line number of the first line in a file that contains needle."""
+    for n, line in enumerate((root / rel).read_text().splitlines(), 1):
+        if needle in line:
+            return n
+    raise AssertionError(f"{needle!r} not in {rel}")
+
+
 class FakeLLM:
     """Records every prompt and returns a canned reply."""
 
@@ -198,6 +222,12 @@ def read_resource(server: Any, uri: str) -> str:
 
 def text_of(result: Any) -> str:
     return "\n".join(getattr(block, "text", "") for block in result.content)
+
+
+def data_of(result: Any) -> dict[str, Any]:
+    """The structured content of a tool result."""
+    assert result.structured_content is not None, text_of(result)
+    return result.structured_content
 
 
 def wait_until(predicate, timeout: float = 6.0, interval: float = 0.1) -> bool:
