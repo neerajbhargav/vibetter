@@ -1,237 +1,213 @@
-"""
-Multi-provider LLM dispatch for VIBETTER.
-Lazy imports so users only need the SDK for their chosen provider.
+"""LLM providers: Gemini, OpenAI, Anthropic and local Ollama.
 
-Config (env vars):
-  VIBETTER_PROVIDER  = gemini | openai | anthropic | ollama  (auto-detected if unset)
-  GEMINI_API_KEY     = ...
-  OPENAI_API_KEY     = ...
-  ANTHROPIC_API_KEY  = ...
-  OLLAMA_BASE_URL    = http://localhost:11434  (default)
-  VIBETTER_MODEL     = override the primary model name
+SDKs are imported lazily, so only the chosen provider's SDK must be installed.
+Each provider has a model chain. A transient error (rate limit, 5xx,
+connection) or a missing model moves to the next model. Any other error
+stops at once. Errors are classified by SDK exception type and HTTP status,
+never by matching words in the message.
+
+Environment:
+  VIBETTER_PROVIDER  gemini | openai | anthropic | ollama (auto-detected if unset)
+  VIBETTER_MODEL     tried before the provider's default chain
+  GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY
+  OLLAMA_HOST        default http://127.0.0.1:11434
 """
 
-import os
+from __future__ import annotations
+
 import asyncio
+import os
+import sys
+from collections.abc import Callable
+from typing import Any, Literal
 
-# Per-provider default model fallback chains
-DEFAULT_MODELS = {
-    "gemini":    ["gemini-2.0-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash"],
-    "openai":    ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"],
-    "anthropic": ["claude-sonnet-4-20250514", "claude-haiku-4-20250414"],
-    "ollama":    ["llama3", "mistral", "codellama"],
+from .config import VibetterError
+
+# Model IDs checked against each provider's model list on 2026-10-21:
+# platform.claude.com/docs/en/about-claude/models/overview,
+# developers.openai.com/api/docs/models, ai.google.dev/gemini-api/docs/models.
+# The cheapest current model comes first.
+DEFAULT_MODELS: dict[str, tuple[str, ...]] = {
+    "gemini": ("gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.6-flash"),
+    "openai": ("gpt-6-luna", "gpt-6.1-sol"),
+    "anthropic": ("claude-haiku-5-5", "claude-sonnet-5-5"),
+    "ollama": ("qwen2.5-coder:7b",),
 }
 
-# Cached clients (initialized on first call)
-_clients = {}
+KEY_ENV = {"gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "anthropic": "ANTHROPIC_API_KEY"}
+SDK = {"gemini": "google-genai", "openai": "openai", "anthropic": "anthropic", "ollama": "ollama"}
+MAX_OUTPUT_TOKENS = 8192
+JSON_ONLY = "Respond with valid JSON only. No markdown fences and no text outside the JSON."
+
+Kind = Literal["transient", "missing", "fatal"]
 
 
-def _is_transient(err_str: str) -> bool:
-    """Check if an error is transient (rate limit, capacity, temporary outage)."""
-    lower = err_str.lower()
-    return any(x in lower for x in (
-        "429", "503", "529", "rate", "quota", "resource_exhausted",
-        "unavailable", "overloaded", "high demand", "capacity",
-        "no longer available", "deprecated",
-    ))
+class ProviderError(VibetterError):
+    pass
 
 
-def _is_model_missing(err_str: str) -> bool:
-    """Check if error means the model doesn't exist (try next model)."""
-    lower = err_str.lower()
-    return any(x in lower for x in ("404", "not_found", "does not exist", "not found"))
+def _connection_error_types() -> tuple[type[BaseException], ...]:
+    """Network failure types from the SDKs that are already imported."""
+    found: list[type[BaseException]] = [ConnectionError, TimeoutError]
+    for module, name in (
+        ("openai", "APIConnectionError"),
+        ("anthropic", "APIConnectionError"),
+        ("httpx", "TransportError"),
+        ("httpx2", "TransportError"),
+    ):
+        cls = getattr(sys.modules.get(module), name, None)
+        if isinstance(cls, type) and issubclass(cls, BaseException):
+            found.append(cls)
+    return tuple(found)
 
 
-# ---- Gemini ----------------------------------------------------------------
-
-async def _call_gemini(prompt: str, json_mode: bool, models: list) -> str:
-    try:
-        from google import genai
-        from google.genai import types as genai_types
-    except ImportError:
-        return "Error: google-genai package not installed. Run: pip install google-genai"
-
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        return "Error: GEMINI_API_KEY is not set. Add it to backend/.env"
-
-    if "gemini" not in _clients:
-        _clients["gemini"] = genai.Client(api_key=api_key)
-    client = _clients["gemini"]
-
-    config = genai_types.GenerateContentConfig(
-        response_mime_type="application/json"
-    ) if json_mode else None
-    last_error = None
-
-    for model in models:
-        try:
-            kwargs = {"model": model, "contents": prompt}
-            if config:
-                kwargs["config"] = config
-            response = await asyncio.to_thread(
-                client.models.generate_content, **kwargs
-            )
-            return response.text
-        except Exception as e:
-            err = str(e)
-            if _is_transient(err) or _is_model_missing(err):
-                last_error = e
-                continue
-            return f"Error calling Gemini ({model}): {err}"
-
-    return f"Error: All Gemini models exhausted. Details: {last_error}"
+def _status(exc: BaseException) -> int | None:
+    # openai/anthropic/ollama errors carry status_code; google-genai APIError carries code.
+    for attr in ("status_code", "code"):
+        value = getattr(exc, attr, None)
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            return value
+    return None
 
 
-# ---- OpenAI ----------------------------------------------------------------
-
-async def _call_openai(prompt: str, json_mode: bool, models: list) -> str:
-    try:
-        import openai
-    except ImportError:
-        return "Error: openai package not installed. Run: pip install openai"
-
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        return "Error: OPENAI_API_KEY is not set. Add it to backend/.env"
-
-    if "openai" not in _clients:
-        _clients["openai"] = openai.OpenAI(api_key=api_key)
-    client = _clients["openai"]
-    last_error = None
-
-    for model in models:
-        try:
-            kwargs = {
-                "model": model,
-                "messages": [{"role": "user", "content": prompt}],
-            }
-            if json_mode:
-                kwargs["response_format"] = {"type": "json_object"}
-            response = await asyncio.to_thread(
-                client.chat.completions.create, **kwargs
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            err = str(e)
-            if _is_transient(err) or _is_model_missing(err):
-                last_error = e
-                continue
-            return f"Error calling OpenAI ({model}): {err}"
-
-    return f"Error: All OpenAI models exhausted. Details: {last_error}"
-
-
-# ---- Anthropic -------------------------------------------------------------
-
-async def _call_anthropic(prompt: str, json_mode: bool, models: list) -> str:
-    try:
-        import anthropic
-    except ImportError:
-        return "Error: anthropic package not installed. Run: pip install anthropic"
-
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        return "Error: ANTHROPIC_API_KEY is not set. Add it to backend/.env"
-
-    if "anthropic" not in _clients:
-        _clients["anthropic"] = anthropic.Anthropic(api_key=api_key)
-    client = _clients["anthropic"]
-    last_error = None
-
-    for model in models:
-        try:
-            kwargs = {
-                "model": model,
-                "max_tokens": 16384,
-                "messages": [{"role": "user", "content": prompt}],
-            }
-            if json_mode:
-                kwargs["system"] = (
-                    "Respond with valid JSON only. "
-                    "No markdown fences, no explanation, no text outside the JSON."
-                )
-            response = await asyncio.to_thread(
-                client.messages.create, **kwargs
-            )
-            return response.content[0].text
-        except Exception as e:
-            err = str(e)
-            if _is_transient(err) or _is_model_missing(err):
-                last_error = e
-                continue
-            return f"Error calling Anthropic ({model}): {err}"
-
-    return f"Error: All Anthropic models exhausted. Details: {last_error}"
-
-
-# ---- Ollama ----------------------------------------------------------------
-
-async def _call_ollama(prompt: str, json_mode: bool, models: list) -> str:
-    try:
-        import ollama
-    except ImportError:
-        return "Error: ollama package not installed. Run: pip install ollama"
-
-    base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    if "ollama" not in _clients:
-        _clients["ollama"] = ollama.Client(host=base_url)
-    client = _clients["ollama"]
-    last_error = None
-
-    for model in models:
-        try:
-            kwargs = {
-                "model": model,
-                "messages": [{"role": "user", "content": prompt}],
-            }
-            if json_mode:
-                kwargs["format"] = "json"
-            response = await asyncio.to_thread(client.chat, **kwargs)
-            return response.message.content
-        except Exception as e:
-            err = str(e)
-            if _is_transient(err) or _is_model_missing(err):
-                last_error = e
-                continue
-            return f"Error calling Ollama ({model}): {err}"
-
-    return f"Error: All Ollama models exhausted. Is Ollama running? Details: {last_error}"
-
-
-# ---- Dispatch --------------------------------------------------------------
-
-PROVIDERS = {
-    "gemini":    _call_gemini,
-    "openai":    _call_openai,
-    "anthropic": _call_anthropic,
-    "ollama":    _call_ollama,
-}
+def classify(exc: BaseException) -> Kind:
+    if isinstance(exc, _connection_error_types()):
+        return "transient"
+    status = _status(exc)
+    if status == 404:
+        return "missing"
+    if status is not None and (status in (408, 409, 429) or status >= 500):
+        return "transient"
+    return "fatal"
 
 
 def get_provider_name() -> str:
-    """Detect provider from VIBETTER_PROVIDER env var, or auto-detect from API key."""
-    explicit = os.getenv("VIBETTER_PROVIDER", "").lower().strip()
-    if explicit in PROVIDERS:
+    explicit = os.getenv("VIBETTER_PROVIDER", "").strip().lower()
+    if explicit:
+        if explicit not in DEFAULT_MODELS:
+            raise ProviderError(
+                f"Unknown VIBETTER_PROVIDER '{explicit}'. Use one of: {', '.join(DEFAULT_MODELS)}."
+            )
         return explicit
-    # Auto-detect from whichever API key is set
-    if os.getenv("GEMINI_API_KEY"):
-        return "gemini"
-    if os.getenv("OPENAI_API_KEY"):
-        return "openai"
-    if os.getenv("ANTHROPIC_API_KEY"):
-        return "anthropic"
+    for name, env in KEY_ENV.items():
+        if os.getenv(env):
+            return name
     return "ollama"
 
 
-async def call_llm(prompt: str, json_mode: bool = False) -> str:
-    """Single entry point for all LLM calls. Replaces _call_gemini everywhere."""
-    provider = get_provider_name()
-    if provider not in PROVIDERS:
-        return f"Error: Unknown provider '{provider}'. Use: gemini, openai, anthropic, or ollama"
+# --- clients ----------------------------------------------------------------
 
-    model_override = os.getenv("VIBETTER_MODEL")
-    default_chain = DEFAULT_MODELS.get(provider, [])
-    models = ([model_override] + default_chain) if model_override else default_chain
+_clients: dict[tuple[str, str], Any] = {}
 
-    return await PROVIDERS[provider](prompt, json_mode, models)
+
+def _import(provider: str, module: str) -> Any:
+    try:
+        return __import__(module, fromlist=["_"])
+    except ImportError as e:
+        raise ProviderError(
+            f"The {SDK[provider]} package is not installed. Run: pip install 'vibetter[{provider}]'"
+        ) from e
+
+
+def _make_client(provider: str) -> Any:
+    if provider == "ollama":
+        host = os.getenv("OLLAMA_HOST") or os.getenv("OLLAMA_BASE_URL") or "http://127.0.0.1:11434"
+        key = ("ollama", host)
+        if key not in _clients:
+            _clients[key] = _import("ollama", "ollama").Client(host=host)
+        return _clients[key]
+
+    api_key = os.getenv(KEY_ENV[provider])
+    if not api_key:
+        raise ProviderError(f"{KEY_ENV[provider]} is not set. Add it to ~/.vibetter/.env.")
+    key = (provider, api_key)
+    if key not in _clients:
+        if provider == "gemini":
+            _clients[key] = _import(provider, "google.genai").Client(api_key=api_key)
+        elif provider == "openai":
+            _clients[key] = _import(provider, "openai").OpenAI(api_key=api_key)
+        else:
+            _clients[key] = _import(provider, "anthropic").Anthropic(api_key=api_key)
+    return _clients[key]
+
+
+# --- one request per provider -------------------------------------------------
+
+
+def _gemini(client: Any, model: str, prompt: str, json_mode: bool) -> str:
+    kwargs: dict[str, Any] = {"model": model, "contents": prompt}
+    if json_mode:
+        kwargs["config"] = {"response_mime_type": "application/json"}
+    return client.models.generate_content(**kwargs).text or ""
+
+
+def _openai(client: Any, model: str, prompt: str, json_mode: bool) -> str:
+    kwargs: dict[str, Any] = {"model": model, "messages": [{"role": "user", "content": prompt}]}
+    if json_mode:
+        kwargs["response_format"] = {"type": "json_object"}
+    return client.chat.completions.create(**kwargs).choices[0].message.content or ""
+
+
+def _anthropic(client: Any, model: str, prompt: str, json_mode: bool) -> str:
+    kwargs: dict[str, Any] = {
+        "model": model,
+        "max_tokens": MAX_OUTPUT_TOKENS,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    if json_mode:
+        kwargs["system"] = JSON_ONLY
+    response = client.messages.create(**kwargs)
+    # Current Claude models may return thinking blocks before the text.
+    return "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
+
+
+def _ollama(client: Any, model: str, prompt: str, json_mode: bool) -> str:
+    kwargs: dict[str, Any] = {"model": model, "messages": [{"role": "user", "content": prompt}]}
+    if json_mode:
+        kwargs["format"] = "json"
+    return client.chat(**kwargs).message.content or ""
+
+
+REQUEST: dict[str, Callable[[Any, str, str, bool], str]] = {
+    "gemini": _gemini,
+    "openai": _openai,
+    "anthropic": _anthropic,
+    "ollama": _ollama,
+}
+
+
+def _hint(provider: str, failures: list[tuple[str, BaseException]]) -> str:
+    if provider != "ollama":
+        return ""
+    if any(classify(e) == "missing" for _, e in failures):
+        return f" Pull the model first: ollama pull {failures[0][0]}"
+    return " Is Ollama running? Start it with: ollama serve"
+
+
+async def call_llm(
+    prompt: str,
+    json_mode: bool = False,
+    *,
+    provider: str | None = None,
+    client: Any = None,
+    models: list[str] | tuple[str, ...] | None = None,
+) -> str:
+    """Send one prompt and return the reply text. Raises ProviderError."""
+    provider = provider or get_provider_name()
+    if models is None:
+        override = os.getenv("VIBETTER_MODEL", "").strip()
+        models = ((override,) if override else ()) + DEFAULT_MODELS[provider]
+    if client is None:
+        client = _make_client(provider)
+    request = REQUEST[provider]
+
+    failures: list[tuple[str, BaseException]] = []
+    for model in models:
+        try:
+            return await asyncio.to_thread(request, client, model, prompt, json_mode)
+        except Exception as e:  # noqa: BLE001 - classified below; unknown errors stop the chain
+            failures.append((model, e))
+            if classify(e) == "fatal":
+                break
+    details = "; ".join(f"{model}: {type(e).__name__}: {e}" for model, e in failures)
+    raise ProviderError(f"{provider} request failed ({details}).{_hint(provider, failures)}")
