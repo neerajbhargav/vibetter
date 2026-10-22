@@ -29,6 +29,8 @@ gemini = ["google-genai>=1.0,<3"]
 openai = ["openai>=1.40,<4"]
 anthropic = ["anthropic>=0.40,<3"]
 ollama = ["ollama>=0.4,<1"]
+dense = ["fastembed>=0.5,<1"]
+otel = ["opentelemetry-sdk>=1.30,<2", "opentelemetry-exporter-otlp-proto-http>=1.30,<2"]
 
 [project.scripts]
 vibetter = "vibetter.cli:main"
@@ -45,6 +47,7 @@ dev = [
     "openai>=1.40,<4",
     "anthropic>=0.40,<3",
     "ollama>=0.4,<1",
+    "opentelemetry-sdk>=1.30,<2",
 ]
 
 [build-system]
