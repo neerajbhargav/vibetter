@@ -7,7 +7,8 @@ files over 1 MB and secret files (see redact.py) are skipped with a reason.
 
 The index is built on first use, not at import. A watchdog observer feeds
 created, modified, deleted and moved events into a trailing-edge debounce;
-each flush re-reads only the files that changed.
+each flush re-reads only the files that changed and bumps `version`, which
+tells the retriever to re-chunk.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from typing import Any
 import pathspec
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 
+from .chunk import split_lines
 from .config import VibetterError
 from .redact import is_secret_path
 
@@ -124,33 +126,6 @@ def read_indexable(root: Path, rel: str) -> tuple[str | None, str | None]:
     return None, text
 
 
-def render(rel: str, text: str, label: str = "FILE", budget: int | None = None) -> str:
-    """A file with a header and right-aligned line numbers: `  7| code`.
-
-    With a budget, whole lines are kept until the budget is reached.
-    Returns "" when not even the header fits.
-    """
-    lines = text.splitlines()
-    width = len(str(len(lines))) if lines else 1
-    header = f"--- {label}: {rel} ({len(lines)} lines) ---\n"
-    body = [f"{n:>{width}}| {line}\n" for n, line in enumerate(lines, 1)]
-    full = header + "".join(body)
-    if budget is None or len(full) <= budget:
-        return full
-    note = f"... truncated after line {{}} of {len(lines)}\n"
-    reserve = len(note) + width
-    if len(header) + reserve > budget:
-        return ""
-    out, used = [header], len(header)
-    for kept, line in enumerate(body):
-        if used + len(line) + reserve > budget:
-            out.append(note.format(kept))
-            break
-        out.append(line)
-        used += len(line)
-    return "".join(out)
-
-
 class CodebaseIndex(FileSystemEventHandler):
     def __init__(self, root: str | os.PathLike[str], debounce: float = 0.3, max_wait: float = 5.0):
         self.root = Path(root).resolve()
@@ -158,6 +133,7 @@ class CodebaseIndex(FileSystemEventHandler):
         self.max_wait = max_wait
         self.mode = "unbuilt"
         self.build_seconds = 0.0
+        self.version = 0  # bumped whenever the file set or a file's text changes
         self._files: dict[str, str] = {}
         self._skipped: dict[str, str] = {}
         self._lock = threading.RLock()
@@ -203,6 +179,7 @@ class CodebaseIndex(FileSystemEventHandler):
             self._files, self._skipped = files, skipped
             self.mode, self._built = mode, True
             self.build_seconds = time.perf_counter() - start
+            self.version += 1
 
     def stats(self) -> dict[str, Any]:
         files, skipped = self.files, self.skipped
@@ -210,7 +187,7 @@ class CodebaseIndex(FileSystemEventHandler):
             "root": str(self.root),
             "mode": self.mode,
             "files": len(files),
-            "lines": sum(len(t.splitlines()) for t in files.values()),
+            "lines": sum(len(split_lines(t)) for t in files.values()),
             "chars": sum(len(t) for t in files.values()),
             "skipped": dict(sorted(Counter(skipped.values()).items())),
             "build_seconds": round(self.build_seconds, 3),
@@ -240,29 +217,6 @@ class CodebaseIndex(FileSystemEventHandler):
         raise NotIndexed(
             f"File not found in the index: {path} (paths are relative to {self.root}).{hint}"
         )
-
-    def context(self, target: str | None = None, max_chars: int = 40_000) -> str:
-        """Line-numbered files within max_chars: the target first, then its
-        directory, then the rest by path. Files that do not fit are skipped."""
-        files = self.files
-        out: list[str] = []
-        used = 0
-        rel = None
-        if target:
-            rel = self.resolve(target)
-            chunk = render(rel, files[rel], "TARGET FILE", budget=max_chars)
-            out.append(chunk)
-            used = len(chunk)
-        here = posixpath.dirname(rel) if rel else None
-        for path in sorted(files, key=lambda p: (posixpath.dirname(p) != here, p)):
-            if path == rel:
-                continue
-            chunk = render(path, files[path]) + "\n"
-            if used + len(chunk) > max_chars:
-                continue
-            out.append(chunk)
-            used += len(chunk)
-        return "".join(out)
 
     # --- listing -------------------------------------------------------------
 
@@ -404,3 +358,4 @@ class CodebaseIndex(FileSystemEventHandler):
                     self._files[rel] = text
                 elif reason:
                     self._skipped[rel] = reason
+            self.version += 1

@@ -1,4 +1,9 @@
-"""The MCP server: five tools and the ui://blueprint resource.
+"""The MCP server: seven tools and the ui://blueprint resource.
+
+Q&A tools retrieve line-numbered chunks, ask the model, then check every
+path:Lstart-Lend citation in the reply against the index and against the
+context the model was shown. search_code and verify_citations make no LLM
+call, so a host agent such as Claude Code can use them freely.
 
 Importing this module does no I/O. The codebase is resolved and indexed on
 the first tool call (or by `vibetter serve` in a background thread), so the
@@ -9,34 +14,74 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 import threading
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
-from . import __version__, prompts, providers
+from . import __version__, cite, prompts, providers, trace
+from .cite import CitationCheck, Spans
 from .config import VibetterError, resolve_root, vibetter_home
-from .gitdiff import collect_changes
+from .gitdiff import collect_changes, number_lines, shown_spans
+from .graph import blueprint
 from .index import CodebaseIndex
 from .redact import redact
+from .retrieve import Embedder, Retriever, assemble, fastembed_embedder, render
+from .trace import traced
 
 LLM = Callable[[str, bool], Awaitable[str]]
 UI_DIR = Path(__file__).parent / "ui"
+UI_MIME = "text/html;profile=mcp-app"
 
-EXPLAIN_CHARS = 40_000
-OVERVIEW_CHARS = 60_000
-BLUEPRINT_CHARS = 50_000
-DEBUG_CHARS = 30_000
+EXPLAIN_CHARS = 24_000
+DEBUG_CHARS = 24_000
+AUDIO_CHARS = 16_000
 DIFF_CHARS = 40_000
+SEARCH_CHARS = 16_000
+
+
+@dataclass
+class Answer:
+    answer: str
+    citations: list[CitationCheck] = field(default_factory=list)
+    stats: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class SearchHit:
+    path: str
+    start: int
+    end: int
+    score: float
+    arms: list[str]
+    text: str
+
+
+@dataclass
+class SearchResult:
+    hits: list[SearchHit]
+    stats: dict[str, Any] = field(default_factory=dict)
+
+
+def _strict(value: bool | None) -> bool:
+    if value is not None:
+        return value
+    return os.getenv("VIBETTER_STRICT", "").strip().lower() in ("1", "true", "on", "yes")
+
+
+def _stats() -> dict[str, Any]:
+    return {k: v for k, v in trace.current().items() if k != "tool"}
 
 
 class Vibetter:
-    """Tool logic, shared by the MCP server and the `vibetter ask` command."""
+    """Tool logic, shared by the MCP server and the `vibetter` command."""
 
     def __init__(
         self,
@@ -45,12 +90,16 @@ class Vibetter:
         *,
         watch: bool = False,
         debounce: float = 0.3,
+        embedder: Embedder | bool = True,
     ):
         self._root = root
         self._llm = llm
         self._watch = watch
         self._debounce = debounce
+        self._embedder: Embedder | bool | None = embedder
         self._index: CodebaseIndex | None = None
+        self._retriever: Retriever | None = None
+        self._retriever_version = -1
         self._lock = threading.Lock()
         self.blueprint: dict[str, Any] | None = None
 
@@ -64,39 +113,147 @@ class Vibetter:
                 self._index = index
             return self._index
 
-    async def _context(self, target: str | None, max_chars: int) -> str:
-        index = await asyncio.to_thread(self.index)
-        return await asyncio.to_thread(index.context, target, max_chars)
+    def retriever(self) -> Retriever:
+        """The search index for the current files, rebuilt after the files change."""
+        index = self.index()
+        with self._lock:
+            version = index.version
+            if self._retriever is None or self._retriever_version != version:
+                if self._embedder is True:
+                    self._embedder = fastembed_embedder()
+                embedder = self._embedder if callable(self._embedder) else None
+                self._retriever = Retriever(index.files, self._retriever, embedder)
+                self._retriever_version = version
+            return self._retriever
+
+    def _gather(self, query: str, target: str | None, budget: int) -> tuple[Retriever, str, Spans]:
+        """Retrieve and pack context: the target file first, then the best chunks,
+        then the first chunk of each file as a fallback for broad questions."""
+        r = self.retriever()
+        rel = self.index().resolve(target) if target else None
+        hits = r.search(query, within=rel) if rel else []
+        hits += [h for h in r.search(query) if h.chunk.path != rel]
+        context, shown, used = assemble(r.files, [h.chunk for h in hits] + r.heads(), budget)
+        trace.note(
+            retrieval="bm25+symbol" + ("+dense" if r.embedder else ""),
+            chunks_retrieved=len(hits),
+            chunks_in_context=used,
+            context_chars=len(context),
+        )
+        return r, context, shown
 
     async def ask_llm(self, prompt: str, json_mode: bool = False) -> str:
         """The one exit point for text leaving the machine: always redacted."""
-        llm = self._llm or providers.call_llm
-        return await llm(redact(prompt), json_mode)
+        text = redact(prompt)
+        trace.note(prompt_chars=len(text))
+        if self._llm is not None:
+            trace.note(provider="injected")
+            return await self._llm(text, json_mode)
+        return await providers.call_llm(text, json_mode)
 
-    async def explain(self, question: str, file_path: str | None = None) -> str:
-        budget = EXPLAIN_CHARS if file_path else OVERVIEW_CHARS
-        context = await self._context(file_path, budget)
-        return await self.ask_llm(prompts.explain(question, context, file_path))
+    def _verified(
+        self, reply: str, files: Mapping[str, str], shown: Spans | None, strict: bool | None
+    ) -> Answer:
+        pairs = cite.check(reply, files, shown, self.index().root)
+        checks = cite.unique(pairs)
+        trace.note(citations=cite.counts(checks))
+        if _strict(strict):
+            reply = cite.strip_unverified(reply, pairs)
+            trace.note(strict=True)
+        return Answer(reply, checks, _stats())
 
-    async def debug(self, error_message: str, file_path: str | None = None) -> str:
-        context = await self._context(file_path, DEBUG_CHARS)
-        return await self.ask_llm(prompts.debug(error_message, context, file_path))
+    @traced("scholar_explain")
+    async def explain(
+        self, question: str, file_path: str | None = None, strict: bool | None = None
+    ) -> Answer:
+        r, context, shown = await asyncio.to_thread(
+            self._gather, question, file_path, EXPLAIN_CHARS
+        )
+        reply = await self.ask_llm(prompts.explain(question, context, file_path))
+        return self._verified(reply, r.files, shown, strict)
 
-    async def explain_changes(self) -> str:
-        root = resolve_root(self._root)
-        label, diff = await asyncio.to_thread(collect_changes, root, DIFF_CHARS)
-        return await self.ask_llm(prompts.explain_diff(label, diff))
+    @traced("debug_error_in_context")
+    async def debug(
+        self, error_message: str, file_path: str | None = None, strict: bool | None = None
+    ) -> Answer:
+        r, context, shown = await asyncio.to_thread(
+            self._gather, error_message, file_path, DEBUG_CHARS
+        )
+        reply = await self.ask_llm(prompts.debug(error_message, context, file_path))
+        return self._verified(reply, r.files, shown, strict)
 
-    async def make_blueprint(self) -> dict[str, Any]:
-        context = await self._context(None, BLUEPRINT_CHARS)
-        reply = await self.ask_llm(prompts.blueprint(context), json_mode=True)
-        self.blueprint = parse_graph(reply)
-        return self.blueprint
+    @traced("explain_last_change")
+    async def explain_changes(self, strict: bool | None = None) -> Answer:
+        index = await asyncio.to_thread(self.index)
+        label, diff = await asyncio.to_thread(collect_changes, index.root, DIFF_CHARS)
+        numbered = number_lines(diff)
+        trace.note(context_chars=len(numbered))
+        reply = await self.ask_llm(prompts.explain_diff(label, numbered))
+        return self._verified(reply, index.files, shown_spans(diff), strict)
 
+    @traced("search_code")
+    async def search(
+        self, query: str, limit: int = 8, file_path: str | None = None
+    ) -> SearchResult:
+        r = await asyncio.to_thread(self.retriever)
+        rel = self.index().resolve(file_path) if file_path else None
+        limit = max(1, min(limit, 50))
+        hits = await asyncio.to_thread(r.search, query, rel, limit)
+        out: list[SearchHit] = []
+        used = 0
+        for h in hits:
+            text = render(r.files, h.chunk)
+            if out and used + len(text) > SEARCH_CHARS:
+                break
+            out.append(SearchHit(h.chunk.path, h.chunk.start, h.chunk.end, h.score, h.arms, text))
+            used += len(text)
+        trace.note(
+            retrieval="bm25+symbol" + ("+dense" if r.embedder else ""),
+            chunks_retrieved=len(out),
+            context_chars=used,
+        )
+        return SearchResult(out, _stats())
+
+    @traced("verify_citations")
+    async def verify(self, text: str, strict: bool | None = None) -> Answer:
+        index = await asyncio.to_thread(self.index)
+        return self._verified(text, index.files, None, strict)
+
+    @traced("generate_blueprint")
+    async def make_blueprint(self, labels: bool = False) -> dict[str, Any]:
+        index = await asyncio.to_thread(self.index)
+        graph = await asyncio.to_thread(blueprint, index.files)
+        if labels and graph["nodes"]:
+            reply = await self.ask_llm(
+                prompts.blueprint_labels(
+                    [n["id"] for n in graph["nodes"]],
+                    [(e["source"], e["target"]) for e in graph["edges"]],
+                ),
+                json_mode=True,
+            )
+            groups = parse_json(reply).get("groups")
+            if not isinstance(groups, dict):
+                raise VibetterError("The model's label JSON needs a 'groups' object.")
+            label_of = {
+                path: str(name)
+                for name, paths in groups.items()
+                if isinstance(paths, list)
+                for path in paths
+                if isinstance(path, str)
+            }
+            for node in graph["nodes"]:
+                if node["id"] in label_of:
+                    node["data"]["group"] = label_of[node["id"]]
+            graph["stats"]["labels"] = "model-assigned groups"
+        trace.note(graph={k: v for k, v in graph["stats"].items() if isinstance(v, int)})
+        self.blueprint = graph
+        return graph
+
+    @traced("generate_audio_overview")
     async def audio(self, question: str, file_path: str | None = None) -> str:
         import gtts
 
-        context = await self._context(file_path, EXPLAIN_CHARS)
+        _, context, _ = await asyncio.to_thread(self._gather, question, file_path, AUDIO_CHARS)
         transcript = await self.ask_llm(prompts.audio(question, context, file_path))
         out_dir = vibetter_home() / "outputs"
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -109,22 +266,18 @@ class Vibetter:
         return f"Audio saved to: {path}\n\nTranscript preview:\n{preview}"
 
 
-def parse_graph(reply: str) -> dict[str, Any]:
+def parse_json(reply: str) -> dict[str, Any]:
     text = reply.strip()
     fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", text, re.DOTALL)
     if fenced:
         text = fenced.group(1)
     try:
-        graph = json.loads(text)
+        data = json.loads(text)
     except json.JSONDecodeError as e:
-        raise VibetterError(f"The model did not return valid blueprint JSON ({e}).") from e
-    if not (
-        isinstance(graph, dict)
-        and isinstance(graph.get("nodes"), list)
-        and isinstance(graph.get("edges"), list)
-    ):
-        raise VibetterError("The model's blueprint JSON needs 'nodes' and 'edges' lists.")
-    return graph
+        raise VibetterError(f"The model did not return valid JSON ({e}).") from e
+    if not isinstance(data, dict):
+        raise VibetterError("The model returned JSON that is not an object.")
+    return data
 
 
 def blueprint_html(graph: dict[str, Any] | None) -> str:
@@ -149,7 +302,7 @@ def blueprint_html(graph: dict[str, Any] | None) -> str:
     html = re.sub(
         r'<script[^>]+src="(/assets/[^"]+\.js)"[^>]*></script>', lambda m: inline(m, "script"), html
     )
-    # The graph is model output: escape "</" so it cannot close the script tag.
+    # File paths come from the repo: escape "</" so they cannot close the script tag.
     data = json.dumps(graph, indent=1).replace("</", "<\\/") if graph else "null"
     return html.replace(
         "</head>", f"<script>window.__VIBETTER_BLUEPRINT__ = {data};</script>\n</head>", 1
@@ -163,34 +316,66 @@ async def _tool(call: Awaitable[Any]) -> Any:
         raise ToolError(str(e)) from e
 
 
+# MCP Apps hosts render ui://blueprint inline next to the tool result. The
+# flat key is the older draft's spelling, kept for hosts that still read it.
+BLUEPRINT_META = {"ui": {"resourceUri": "ui://blueprint"}, "ui/resourceUri": "ui://blueprint"}
+
+
 def build_mcp(app: Vibetter) -> FastMCP:
     mcp = FastMCP("VIBETTER", version=__version__)
 
     @mcp.tool
-    async def scholar_explain(file_path: str, question: str) -> str:
-        """Answer a question about one file, using that file and nearby files as context.
+    async def scholar_explain(file_path: str, question: str, strict: bool | None = None) -> Answer:
+        """Answer a question about one file, from that file and the most relevant
+        chunks of the rest of the repo, with checked citations.
 
         file_path is relative to the project root, for example "src/api.js".
-        The answer cites path:line from line-numbered source.
+        Each path:Lstart-Lend citation in the answer comes back checked: valid
+        (the file and lines exist) and grounded (the lines were in the context
+        the model saw). strict=true removes sentences whose citation fails.
         """
-        return await _tool(app.explain(question, file_path))
+        return await _tool(app.explain(question, file_path, strict))
 
     @mcp.tool
-    async def explain_last_change() -> str:
+    async def explain_last_change(strict: bool | None = None) -> Answer:
         """Explain the latest change: uncommitted edits (staged, unstaged and new
-        untracked files), or the last commit when the tree is clean."""
-        return await _tool(app.explain_changes())
+        untracked files), or the last commit when the tree is clean. Citations
+        are checked against the diff hunks that were shown."""
+        return await _tool(app.explain_changes(strict))
 
     @mcp.tool
-    async def debug_error_in_context(error_message: str, file_path: str | None = None) -> str:
-        """Diagnose an error message against the codebase and propose a fix."""
-        return await _tool(app.debug(error_message, file_path))
+    async def debug_error_in_context(
+        error_message: str, file_path: str | None = None, strict: bool | None = None
+    ) -> Answer:
+        """Diagnose an error message against the codebase and propose a fix.
+        Traceback frames in the message steer retrieval; citations are checked."""
+        return await _tool(app.debug(error_message, file_path, strict))
 
     @mcp.tool
-    async def generate_blueprint() -> dict[str, Any]:
-        """Ask the model for a file dependency graph (model-inferred, not static
-        analysis). Open the ui://blueprint resource afterwards to view it."""
-        return await _tool(app.make_blueprint())
+    async def search_code(query: str, limit: int = 8, file_path: str | None = None) -> SearchResult:
+        """Find the code chunks most relevant to a query, with no LLM call.
+
+        Ranks chunks with BM25, a symbol and file-name index, and (when the
+        dense extra is installed) embeddings, fused by reciprocal rank. Each
+        hit is line-numbered, so you can cite it as path:Lstart-Lend.
+        file_path limits the search to one file.
+        """
+        return await _tool(app.search(query, limit, file_path))
+
+    @mcp.tool
+    async def verify_citations(text: str, strict: bool | None = None) -> Answer:
+        """Check every path:line citation in a text against the indexed files,
+        with no LLM call. Reports, per citation, whether the file and lines
+        exist and whether a quoted snippet matches. Use it on your own answers."""
+        return await _tool(app.verify(text, strict))
+
+    @mcp.tool(meta=BLUEPRINT_META)
+    async def generate_blueprint(labels: bool = False) -> dict[str, Any]:
+        """Build the file dependency graph from static imports (Python ast, plus
+        JS/TS/Vue import parsing) with a deterministic layout. labels=true asks
+        the model to name groups of files; the graph itself never comes from the
+        model. Hosts with MCP Apps show it inline; otherwise open ui://blueprint."""
+        return await _tool(app.make_blueprint(labels))
 
     @mcp.tool
     async def generate_audio_overview(question: str, file_path: str | None = None) -> str:
@@ -198,10 +383,17 @@ def build_mcp(app: Vibetter) -> FastMCP:
         Uses gTTS, which sends the transcript to Google's text-to-speech service."""
         return await _tool(app.audio(question, file_path))
 
-    @mcp.resource("ui://blueprint", mime_type="text/html")
-    def blueprint_ui() -> str:
-        """Interactive Vue Flow view of the last generated blueprint."""
-        return blueprint_html(app.blueprint)
+    @mcp.resource("ui://blueprint", mime_type=UI_MIME)
+    async def blueprint_ui() -> str:
+        """Interactive Vue Flow view of the dependency graph."""
+        graph = app.blueprint
+        if graph is None:
+            try:
+                index = await asyncio.to_thread(app.index)
+                graph = await asyncio.to_thread(blueprint, index.files)
+            except VibetterError:
+                graph = None
+        return blueprint_html(graph)
 
     return mcp
 
@@ -212,5 +404,7 @@ def create_server(
     *,
     watch: bool = False,
     debounce: float = 0.3,
+    embedder: Embedder | bool = False,
 ) -> FastMCP:
-    return build_mcp(Vibetter(root, llm, watch=watch, debounce=debounce))
+    """The test and eval seam. Dense retrieval is off unless an embedder is given."""
+    return build_mcp(Vibetter(root, llm, watch=watch, debounce=debounce, embedder=embedder))

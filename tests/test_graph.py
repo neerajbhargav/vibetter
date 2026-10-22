@@ -70,11 +70,10 @@ def test_vibetter_own_imports():
     src = Path(vibetter.__file__).parent
     files = {f"src/vibetter/{p.name}": p.read_text() for p in src.glob("*.py")}
     _, edges = import_graph(files)
-    for target in ("index", "providers", "gitdiff", "redact"):
+    for target in ("retrieve", "cite", "graph", "index", "providers", "trace"):
         assert ("src/vibetter/server.py", f"src/vibetter/{target}.py") in edges
-    assert ("src/vibetter/cli.py", "src/vibetter/server.py") in edges  # imported inside main()
+    assert ("src/vibetter/cli.py", "src/vibetter/server.py") in edges
     assert ("src/vibetter/graph.py", "src/vibetter/retrieve.py") in edges
-    assert ("src/vibetter/retrieve.py", "src/vibetter/cite.py") in edges
 
 
 def test_large_graph_keeps_the_best_connected_files():

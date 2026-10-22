@@ -1,4 +1,7 @@
-"""CodebaseIndex: file selection, path lookup and context assembly."""
+"""CodebaseIndex: file selection, path lookup and change tracking.
+
+Context assembly moved to retrieve.py; its regression tests live in test_retrieve.py.
+"""
 
 from __future__ import annotations
 
@@ -85,30 +88,6 @@ def test_regression_missing_file_is_explicit(repo: Path):
         index.resolve("../elsewhere.py")
 
 
-def test_regression_oversized_neighbor_skipped_not_stopping_fill(repo: Path):
-    write(repo, "src/aaa_huge.py", "# filler line for the budget test\n" * 400)
-    index = built(repo)
-    context = index.context("src/calc.py", max_chars=3000)
-    assert "FILE: src/aaa_huge.py" not in context
-    assert "FILE: src/util.py" in context  # filling continued past the big file
-    assert len(context) <= 3000
-
-
-def test_regression_target_file_truncated_to_budget(repo: Path):
-    write(repo, "src/long.py", "".join(f"value_{i} = {i}\n" for i in range(2000)))
-    index = built(repo)
-    context = index.context("src/long.py", max_chars=2000)
-    assert len(context) <= 2000
-    assert "TARGET FILE: src/long.py" in context
-    assert "truncated" in context
-
-
-def test_context_without_target_is_sorted_and_bounded(repo: Path):
-    context = built(repo).context(max_chars=100_000)
-    headers = [line for line in context.splitlines() if line.startswith("--- FILE: ")]
-    assert headers == sorted(headers)
-
-
 def test_stats_counts_files_lines_and_skips(repo: Path):
     stats = built(repo).stats()
     assert stats["files"] == len(built(repo).files)
@@ -185,3 +164,13 @@ def test_regression_import_does_not_build_index(tmp_path: Path):
     out = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True)
     assert out.returncode == 0, out.stderr
     assert out.stdout.strip() == "1"  # no watcher thread started
+
+
+def test_version_bumps_on_build_and_on_each_applied_change(repo: Path):
+    index = built(repo)
+    assert index.version == 1
+    _rapid(index, repo, "src/calc.py", "changed = 1\n")
+    index.flush()
+    assert index.version == 2
+    index.flush()  # nothing pending
+    assert index.version == 2

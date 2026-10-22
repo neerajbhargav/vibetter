@@ -1,7 +1,9 @@
 """`vibetter` console script.
 
 vibetter                      run the MCP server on stdio (same as `vibetter serve`)
-vibetter ask "question"       answer in the terminal, with optional --file
+vibetter ask "question"       answer in the terminal and check its citations
+vibetter search "query"       show the chunks retrieval picks (no LLM, no key)
+vibetter verify [FILE]        check the path:line citations in a text (stdin by default)
 vibetter index --stats        show what the index contains and skips
 """
 
@@ -23,13 +25,23 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"vibetter {__version__}")
     sub = parser.add_subparsers(dest="command")
     sub.add_parser("serve", help="run the MCP server on stdio (the default)")
+    root_help = "codebase directory (default: VIBETTER_CODEBASE_PATH or cwd)"
     ask = sub.add_parser("ask", help="ask a question about the codebase")
     ask.add_argument("question")
     ask.add_argument("--file", help="focus on this file (relative to the root)")
-    ask.add_argument("--root", help="codebase directory (default: VIBETTER_CODEBASE_PATH or cwd)")
+    ask.add_argument("--strict", action="store_true", help="remove claims whose citation fails")
+    ask.add_argument("--root", help=root_help)
+    search = sub.add_parser("search", help="rank code chunks for a query, without an LLM")
+    search.add_argument("query")
+    search.add_argument("--limit", type=int, default=5)
+    search.add_argument("--file", help="search within this file only")
+    search.add_argument("--root", help=root_help)
+    verify = sub.add_parser("verify", help="check the citations in a text, without an LLM")
+    verify.add_argument("path", nargs="?", default="-", help="text file to check (default: stdin)")
+    verify.add_argument("--root", help=root_help)
     index = sub.add_parser("index", help="list indexed files, or --stats for a summary")
     index.add_argument("--stats", action="store_true", help="print counts instead of paths")
-    index.add_argument("--root", help="codebase directory (default: VIBETTER_CODEBASE_PATH or cwd)")
+    index.add_argument("--root", help=root_help)
     return parser
 
 
@@ -53,20 +65,49 @@ def serve() -> None:
     build_mcp(app).run(show_banner=False)
 
 
+def _print_citations(answer) -> None:
+    counts = answer.stats.get("citations", {})
+    grounded = any(c.grounded is not None for c in answer.citations)
+    print(
+        f"\ncitations: {counts.get('total', 0)} found, {counts.get('valid', 0)} valid"
+        + (f", {counts.get('grounded', 0)} grounded" if grounded else "")
+    )
+    for c in answer.citations:
+        mark = "ok" if c.verified else "!!"
+        line = f"L{c.start}" if c.start == c.end else f"L{c.start}-L{c.end}"
+        note = "" if c.verified else f"  ({c.reason})"
+        print(f"  {mark} {c.path}:{line}{note}")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     load_env()
     try:
         if args.command in (None, "serve"):
             serve()
-        elif args.command == "ask":
-            from .server import Vibetter
+            return 0
+        from .server import Vibetter
 
-            print(asyncio.run(Vibetter(args.root).explain(args.question, args.file)))
+        app = Vibetter(args.root)
+        if args.command == "ask":
+            answer = asyncio.run(app.explain(args.question, args.file, args.strict or None))
+            print(answer.answer)
+            _print_citations(answer)
+        elif args.command == "search":
+            result = asyncio.run(app.search(args.query, args.limit, args.file))
+            for hit in result.hits:
+                print(f"[{hit.score:.4f} {'+'.join(hit.arms) or 'file order'}]\n{hit.text}")
+        elif args.command == "verify":
+            if args.path == "-":
+                text = sys.stdin.read()
+            else:
+                with open(args.path, encoding="utf-8") as f:
+                    text = f.read()
+            answer = asyncio.run(app.verify(text))
+            _print_citations(answer)
+            return 0 if all(c.verified for c in answer.citations) else 2
         elif args.command == "index":
-            from .server import Vibetter
-
-            index = Vibetter(args.root).index()
+            index = app.index()
             if args.stats:
                 stats = index.stats()
                 print(
@@ -79,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  {reason}: {count}")
             else:
                 print("\n".join(index.files))
-    except VibetterError as e:
+    except (VibetterError, OSError) as e:
         print(f"vibetter: {e}", file=sys.stderr)
         return 1
     return 0

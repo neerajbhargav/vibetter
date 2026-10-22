@@ -1,12 +1,24 @@
-"""Prompt templates. Context blocks are line-numbered (`  7| code`)."""
+"""Prompt templates. Context blocks have `--- path:L1-L60 ---` headers and `  7| code` lines."""
 
 from __future__ import annotations
 
+import re
+
 CITE = (
-    "Cite code as path:line or path:start-end, using the line numbers shown in the context. "
-    "Only cite files and lines that appear in the context. "
+    "Cite each claim about the code as path:L12-L20, or path:L12 for one line, using the paths "
+    "and line numbers shown in the context. Cite only lines that appear in the context. "
+    "To quote code, put it in backticks right after the citation, copied exactly. "
     "If the context does not contain the answer, say so instead of guessing."
 )
+
+
+def cite_again(text: str, target: str | None = None) -> str:
+    """The citation rule again, after the context: small local models forget
+    instructions that come before a long context. The example uses a real path
+    from the context, because a model can copy a made-up example path."""
+    m = re.search(r"^(?:--- (\S+):L\d+|\+\+\+ b/(\S+))", text, re.MULTILINE)
+    path = target or ((m.group(1) or m.group(2)) if m else "path/to/file.py")
+    return f"Put a citation such as ({path}:L12-L20) after every claim about the code."
 
 
 def explain(question: str, context: str, target: str | None) -> str:
@@ -20,22 +32,22 @@ def explain(question: str, context: str, target: str | None) -> str:
 
 Question: {question}
 
-Answer with three short sections: What it does, How it works, Why it is written this way."""
+Answer with three short sections: What it does, How it works, Why it is written this way.
+{cite_again(context, target)}"""
 
 
-def blueprint(context: str) -> str:
-    return f"""Read this codebase and return its file dependency graph as JSON for Vue Flow.
+def blueprint_labels(paths: list[str], edges: list[tuple[str, str]]) -> str:
+    listing = "\n".join(paths)
+    imports = "\n".join(f"{a} -> {b}" for a, b in edges) or "(none)"
+    return f"""Group the source files of one codebase into 2 to 8 named parts, such as "API",
+"storage" or "UI". Use only the paths listed, and put each path in one group.
+Return JSON: {{"groups": {{"part name": ["path", "path"]}}}}
 
-The JSON object has exactly two keys, "nodes" and "edges".
-Each node: {{"id": "1", "position": {{"x": 0, "y": 0}}, "data": {{"label": "path/to/file"}},
-"type": "input" | "default" | "output"}}
-Each edge: {{"id": "e1-2", "source": "1", "target": "2", "animated": true}}
-Add an edge only for an import or call you can see in the context.
-Place nodes without overlap within x 0-800 and y 0-600, grouping related files.
+Files:
+{listing}
 
-<context>
-{context}
-</context>"""
+Imports (importer -> imported):
+{imports}"""
 
 
 def audio(question: str, context: str, target: str | None) -> str:
@@ -53,8 +65,9 @@ Topic: {question}"""
 
 def explain_diff(label: str, diff: str) -> str:
     return f"""You are VIBETTER. Explain a code change, often one an AI agent just made.
-The diff below shows {label}. Lines that start with + were added and - were removed.
-{CITE} For the diff, cite the new file's line numbers from the @@ hunk headers.
+The diff below shows {label}. Lines with + were added and - were removed.
+Each line inside a hunk starts with its line number in the new file; removed lines have none.
+{CITE}
 
 Answer with these sections:
 What changed: the files and functions touched.
@@ -64,7 +77,8 @@ Risks: bugs, missing tests or edge cases a reviewer should check.
 
 <diff>
 {diff}
-</diff>"""
+</diff>
+{cite_again(diff)}"""
 
 
 def debug(error_message: str, context: str, target: str | None) -> str:
@@ -85,4 +99,5 @@ Answer with these sections:
 What the error means.
 Why it happened: point to the file and line.
 How to fix it: the exact change, before and after.
-How to avoid it: one practical check."""
+How to avoid it: one practical check.
+{cite_again(context, target)}"""
