@@ -29,6 +29,12 @@ FILES = {"src/calc.py": CALC_PY, "src/util.py": "a\nb\n", "lib/util.py": "c\n"}
         ("see `src/calc.py` lines 5 to 8", ("src/calc.py", 5, 8)),
         ('File "src/calc.py", line 7, in divide', ("src/calc.py", 7, 7)),
         ("see ./src/calc.py:7", ("./src/calc.py", 7, 7)),
+        # Missed until 2026-10-22; the claim next to each one went unchecked.
+        ("see src/calc.py L5-L8 here", ("src/calc.py", 5, 8)),
+        ("see src/calc.py: L7", ("src/calc.py", 7, 7)),
+        ("see `src/calc.py`: lines 5-8", ("src/calc.py", 5, 8)),
+        ("see src/calc.py:L5 - L8", ("src/calc.py", 5, 8)),
+        ("see src/calc.py:7 - 3 more lines", ("src/calc.py", 7, 7)),
     ],
 )
 def test_parses_citation_variants(text: str, expected: tuple[str, int, int]):
@@ -43,6 +49,7 @@ def test_parses_citation_variants(text: str, expected: tuple[str, int, int]):
         "a ratio of 3:4 and version 3.11:2",
         "see the README for details",
         "https://github.com/x/y.git:22",
+        "setup.py 2 times, and main.py: 3 options",
     ],
 )
 def test_ignores_things_that_are_not_citations(text: str):

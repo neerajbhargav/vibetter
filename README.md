@@ -169,9 +169,10 @@ flowchart LR
   to `~/.vibetter/models` on first use; `VIBETTER_DENSE=0` turns the arm off.
 - **Citation check.** A citation is valid when the file is indexed and the lines exist, and
   grounded when the lines overlap the context the model was shown. The parser accepts
-  `path:L12-L20`, `path:12-20`, `path#L12`, `path, lines 12-20` and traceback frames. The
-  prompt's example citation uses placeholders (`path:L<first>-L<last>`), not numbers: a model
-  can copy an example word for word, and a copied range of real lines would pass the check.
+  `path:L12-L20`, `path:12-20`, `path#L12`, `path L12-L20`, `path, lines 12-20` and traceback
+  frames. The prompt's example citation uses placeholders (`path:L<first>-L<last>`), not
+  numbers: a model can copy an example word for word, and a copied range of real lines would
+  pass the check.
 - **Freshness.** A file watcher waits until saves stop for 0.3 s (at most 5 s), then re-reads
   only the files that changed. The retriever re-chunks only those files.
 - **Startup.** The index is built on the first tool call (or in a background thread when the

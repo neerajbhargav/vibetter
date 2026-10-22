@@ -29,11 +29,15 @@ Spans = Mapping[str, list[tuple[int, int]]]
 
 _PATH = r"/?(?:\.{1,2}/)?[\w@~+-][\w.@~+-]*(?:[/\\][\w.@~+-]+)*"
 _DASH = r"(?:-|\u2013|\u2014|\.\.)"
+# Spaces are allowed before an L-prefixed line ("path L5", "path: L5", "L5 - L8"),
+# never before a bare number, so "main.py 2 times" stays prose.
+_LINE_SEP = r"(?:[:#]|:?[ \t]+(?=L\d))"
+_RANGE_DASH = rf"(?:{_DASH}|[ \t]*{_DASH}[ \t]*(?=L\d))"
 _REF = re.compile(
     r'File "(?P<tb_path>[^"\n]+)", line (?P<tb_line>\d+)'
     rf"|(?P<path>{_PATH})"
-    rf"(?:[:#]L?(?P<start>\d+)(?::\d+)?(?:{_DASH}L?(?P<end>\d+)(?::\d+)?)?"
-    r"|[`'\"]?,?[ \t]*\(?[ \t]*lines?[ \t]+(?P<wstart>\d+)"
+    rf"(?:{_LINE_SEP}L?(?P<start>\d+)(?::\d+)?(?:{_RANGE_DASH}L?(?P<end>\d+)(?::\d+)?)?"
+    r"|[`'\"]?[,:]?[ \t]*\(?[ \t]*lines?[ \t]+(?P<wstart>\d+)"
     r"(?:[ \t]*(?:-|\u2013|\u2014|to|through)[ \t]*(?P<wend>\d+))?)"
 )
 _QUOTE = re.compile(r"[ \t]*(?:[:\-\u2013\u2014][ \t]*)?(?:`([^`\n]+)`|\"([^\"\n]+)\")")
