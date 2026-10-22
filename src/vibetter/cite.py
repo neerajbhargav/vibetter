@@ -94,6 +94,9 @@ def parse(text: str) -> list[Ref]:
             and text[m.start() - 1 : m.start()] == text[after]
         ):
             after += 1
+        # A quote may follow the bracket around a citation, as in (path:L12) `code`.
+        while after < len(text) and text[after] in ")]":
+            after += 1
         q = _QUOTE.match(text, after)
         refs.append(
             Ref(
