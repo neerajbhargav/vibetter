@@ -59,14 +59,13 @@ function getNodeClass(index) {
                 <div class="absolute inset-0 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
                 <div class="absolute inset-2 border-4 border-blue-500 border-b-transparent rounded-full animate-spin direction-reverse"></div>
             </div>
-            <p class="text-emerald-400 font-mono tracking-widest text-sm bg-gray-800 px-4 py-2 rounded-lg border border-gray-700 shadow-lg">INGESTING MASTER CONTEXT...</p>
+            <p class="text-emerald-400 font-mono tracking-widest text-sm bg-gray-800 px-4 py-2 rounded-lg border border-gray-700 shadow-lg">LOADING BLUEPRINT...</p>
         </div>
     </div>
 
     <!-- No data state -->
     <div v-else-if="noData" class="absolute inset-0 flex items-center justify-center bg-gray-900 z-50">
         <div class="flex flex-col items-center gap-4 text-center max-w-md px-6">
-            <div class="text-5xl">🗺️</div>
             <h2 class="text-xl font-bold text-white">Blueprint not generated yet</h2>
             <p class="text-gray-400 text-sm leading-relaxed">
                 Call the <code class="bg-gray-800 px-2 py-0.5 rounded text-emerald-400 font-mono">generate_blueprint</code> tool first,

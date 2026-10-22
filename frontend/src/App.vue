@@ -10,13 +10,13 @@ import BlueprintNodeMap from './components/BlueprintNodeMap.vue'
         <p class="text-sm text-gray-400 font-mono mt-1">Cognitive Codebase Blueprint</p>
       </div>
       <div class="flex items-center gap-4">
-        <!-- Live status indicator -->
+        <!-- What the graph is -->
         <div class="flex items-center gap-2 px-3 py-1 bg-gray-900 border border-emerald-500/30 rounded-full shadow-inner">
             <span class="relative flex h-3 w-3">
               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
             </span>
-            <span class="text-xs font-mono tracking-widest text-emerald-400 uppercase">Live Parse Active</span>
+            <span class="text-xs font-mono tracking-widest text-emerald-400 uppercase">Model-inferred graph</span>
         </div>
       </div>
     </header>
