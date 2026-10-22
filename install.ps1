@@ -175,8 +175,8 @@ if ((-not $Registered) -or $NeedManual) {
 
 Write-Host ""
 Write-Success "VIBETTER is ready (provider: $Provider)."
-Write-Host "  Tools: explain_last_change, scholar_explain, debug_error_in_context,"
-Write-Host "         generate_blueprint, generate_audio_overview"
+Write-Host "  Tools: explain_last_change, scholar_explain, debug_error_in_context, search_code,"
+Write-Host "         verify_citations, generate_blueprint, generate_audio_overview"
 Write-Host "  Terminal: $VibetterExe ask `"How does X work?`""
 Write-Host "  If your IDE starts servers outside the project, set VIBETTER_CODEBASE_PATH in its config."
 Write-Host ""

@@ -35,3 +35,18 @@ def test_installers_register_the_packaged_command():
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash not installed")
 def test_install_sh_parses():
     subprocess.run(["bash", "-n", str(ROOT / "install.sh")], check=True)
+
+
+def test_installers_list_every_server_tool(tmp_path: Path):
+    import asyncio
+
+    from fastmcp import Client
+
+    from vibetter.server import create_server
+
+    async def names() -> set[str]:
+        async with Client(create_server(tmp_path)) as client:
+            return {t.name for t in await client.list_tools()}
+
+    for tool in asyncio.run(names()):
+        assert tool in SH and tool in PS1, tool

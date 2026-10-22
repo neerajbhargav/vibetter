@@ -188,8 +188,8 @@ fi
 
 echo ""
 success "VIBETTER is ready (provider: $PROVIDER)."
-echo "  Tools: explain_last_change, scholar_explain, debug_error_in_context,"
-echo "         generate_blueprint, generate_audio_overview"
+echo "  Tools: explain_last_change, scholar_explain, debug_error_in_context, search_code,"
+echo "         verify_citations, generate_blueprint, generate_audio_overview"
 echo "  Terminal: $VIBETTER_BIN ask \"How does X work?\""
 echo "  If your IDE starts servers outside the project, set VIBETTER_CODEBASE_PATH in its config."
 echo ""
