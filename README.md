@@ -204,7 +204,8 @@ message, and the line-numbered context or diff. With Ollama on localhost, nothin
 skips `.env*`, `*.pem`, `*.key`, `*credentials*.json`, `id_rsa*` and similar files, and
 redacts AWS key ids, GitHub tokens, OpenAI, Anthropic and Google keys, JWTs, private key blocks
 and `api_key`/`secret`/`token`/`password` assignments in the remaining text. Redaction is
-pattern-based, so treat it as a safety net, not a guarantee. Repo text goes into the prompt as
+pattern-based, so treat it as a safety net, not a guarantee. `search_code` hits are redacted
+the same way, because the host agent sends them to its own model. Repo text goes into the prompt as
 data; a file that contains instructions can still steer the model's answer.
 
 ---

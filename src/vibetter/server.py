@@ -202,7 +202,8 @@ class Vibetter:
         out: list[SearchHit] = []
         used = 0
         for h in hits:
-            text = render(r.files, h.chunk)
+            # The host agent sends these hits to its own model, so they leave the machine too.
+            text = redact(render(r.files, h.chunk))
             if out and used + len(text) > SEARCH_CHARS:
                 break
             out.append(SearchHit(h.chunk.path, h.chunk.start, h.chunk.end, h.score, h.arms, text))

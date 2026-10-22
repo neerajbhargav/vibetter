@@ -103,6 +103,21 @@ def test_regression_secrets_redacted_in_prompt(repo: Path, llm: FakeLLM):
     assert "TIMEOUT = 30" in llm.last
 
 
+def test_regression_search_code_output_redacted(repo: Path, llm: FakeLLM):
+    # The host agent forwards search hits to its own model, so they leave the machine too.
+    data = data_of(
+        call_tool(
+            create_server(repo, llm),
+            "search_code",
+            {"query": "settings", "file_path": "app/settings.py"},
+        )
+    )
+    text = "".join(hit["text"] for hit in data["hits"])
+    assert "AKIAABCDEFGHIJKLMNOP" not in text
+    assert "[REDACTED" in text
+    assert "TIMEOUT = 30" in text
+
+
 def _overview_prompt(root: Path, llm: FakeLLM) -> str:
     """A broad question with no target file: the context is every file's first chunk."""
     call_tool(create_server(root, llm), "debug_error_in_context", {"error_message": "it broke"})
