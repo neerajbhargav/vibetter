@@ -47,6 +47,20 @@ def _module_file(base: list[str], dotted: str, files: Mapping[str, Any]) -> str 
     return None
 
 
+def _from_targets(
+    base: list[str], module: str, names: list[str], files: Mapping[str, Any]
+) -> set[str]:
+    """Files that `from module import names` reads: a name's own submodule when there is
+    one, else the module itself (where that name is defined)."""
+    found: set[str] = set()
+    for name in names or [""]:
+        sub = _module_file(base, f"{module}.{name}" if module else name, files) if name else None
+        target = sub or _module_file(base, module, files)
+        if target:
+            found.add(target)
+    return found
+
+
 def _package_roots(files: Mapping[str, Any]) -> list[str]:
     """Directories that hold top-level packages, plus the repo root."""
     roots = {""}
@@ -72,11 +86,9 @@ def python_imports(path: str, text: str, files: Mapping[str, Any], roots: list[s
 
     def absolute(dotted: str, names: list[str]) -> None:
         for root in search:
-            base = _parts(root)
-            subs = {_module_file(base, f"{dotted}.{n}", files) for n in names} - {None}
-            target = subs or {_module_file(base, dotted, files)} - {None}
+            target = _from_targets(_parts(root), dotted, names, files)
             if target:
-                found.update(t for t in target if t)
+                found.update(target)
                 return
 
     for node in ast.walk(tree):
@@ -92,12 +104,7 @@ def python_imports(path: str, text: str, files: Mapping[str, Any], roots: list[s
             if node.level - 1 > len(base):
                 continue
             base = base[: len(base) - (node.level - 1)]
-            module = node.module or ""
-            subs = {_module_file(base, f"{module}.{n}" if module else n, files) for n in names} - {
-                None
-            }
-            target = subs or {_module_file(base, module, files)} - {None}
-            found.update(t for t in target if t)
+            found.update(_from_targets(base, node.module or "", names, files))
     return found
 
 

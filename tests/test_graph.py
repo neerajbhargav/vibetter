@@ -74,6 +74,24 @@ def test_vibetter_own_imports():
         assert ("src/vibetter/server.py", f"src/vibetter/{target}.py") in edges
     assert ("src/vibetter/cli.py", "src/vibetter/server.py") in edges
     assert ("src/vibetter/graph.py", "src/vibetter/retrieve.py") in edges
+    # from . import __version__, cite, ...: __version__ lives in the package itself.
+    assert ("src/vibetter/server.py", "src/vibetter/__init__.py") in edges
+
+
+def test_regression_from_import_mixing_submodules_and_names():
+    # Once one name was a submodule, the other names' module was dropped from the graph.
+    files = {
+        "pkg/__init__.py": "VERSION = 1\n",
+        "pkg/a.py": "",
+        "pkg/b.py": "from . import VERSION, a\n",
+        "main.py": "from pkg import a, VERSION\n",
+        "only_sub.py": "from pkg import a\n",
+    }
+    _, edges = import_graph(files)
+    assert ("pkg/b.py", "pkg/__init__.py") in edges and ("pkg/b.py", "pkg/a.py") in edges
+    assert ("main.py", "pkg/__init__.py") in edges and ("main.py", "pkg/a.py") in edges
+    assert ("only_sub.py", "pkg/a.py") in edges
+    assert ("only_sub.py", "pkg/__init__.py") not in edges
 
 
 def test_large_graph_keeps_the_best_connected_files():
