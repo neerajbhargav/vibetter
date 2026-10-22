@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import re
 
+# Examples hold placeholders, never line numbers. qwen2.5-coder:7b copied a numeric example
+# word for word, and a copy with real numbers can pass the citation check.
 CITE = (
-    "Cite each claim about the code as path:L12-L20, or path:L12 for one line, using the paths "
-    "and line numbers shown in the context. Cite only lines that appear in the context. "
+    "Cite each claim about the code with its file path and the line numbers printed at the "
+    "left of the context, as path:L<first>-L<last>, or path:L<line> for one line. "
+    "Cite only lines that appear in the context. "
     "To quote code, put it in backticks right after the citation, copied exactly. "
     "If the context does not contain the answer, say so instead of guessing."
 )
@@ -18,7 +21,10 @@ def cite_again(text: str, target: str | None = None) -> str:
     from the context, because a model can copy a made-up example path."""
     m = re.search(r"^(?:--- (\S+):L\d+|\+\+\+ b/(\S+))", text, re.MULTILINE)
     path = target or ((m.group(1) or m.group(2)) if m else "path/to/file.py")
-    return f"Put a citation such as ({path}:L12-L20) after every claim about the code."
+    return (
+        f"After every claim about the code, add a citation such as ({path}:L<first>-L<last>), "
+        "with <first> and <last> replaced by the line numbers of the lines that support it."
+    )
 
 
 def explain(question: str, context: str, target: str | None) -> str:

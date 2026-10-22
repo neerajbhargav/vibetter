@@ -1,8 +1,9 @@
 """The citation contract: parse file:line references and check them.
 
-The prompts ask for `path:L12-L20` (or `path:L12`). The parser also accepts
-the variants models write anyway: `path:12-20`, `path#L12-L20`, `path:12:5`,
-`path, lines 12-20`, `path (line 12)` and traceback `File "path", line 12`.
+The prompts ask for `path:L<first>-L<last>`, such as `path:L12-L20` (or
+`path:L12`). The parser also accepts the variants models write anyway:
+`path:12-20`, `path#L12-L20`, `path:12:5`, `path, lines 12-20`,
+`path (line 12)` and traceback `File "path", line 12`.
 
 A citation is
 - valid when the file is indexed and the lines exist,

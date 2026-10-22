@@ -108,7 +108,7 @@ def test_quote_must_match_cited_lines():
 
 @pytest.mark.parametrize("wrap", ["({})", "[{}]", "({}):", "(see {})"])
 def test_regression_quote_after_bracketed_citation_is_checked(wrap: str):
-    # The prompt's own example is "(path:L12-L20)", so models put the quote after the ")".
+    # The prompt's example wraps the citation in parentheses, so models put the quote after ")".
     # The parser stopped at ")" and skipped the quote check without saying so.
     (_, good), *_ = check(wrap.format("src/calc.py:L7") + " `raise ZeroDivisionError(...)`", FILES)
     assert good.quote_match is True
