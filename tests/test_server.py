@@ -200,15 +200,23 @@ def test_blueprint_resource_renders_graph_without_a_tool_call(shop: Path, llm: F
     assert llm.prompts == []
 
 
-def test_regression_provider_failure_is_tool_error(repo: Path, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize(
+    ("tool", "args"),
+    [
+        ("scholar_explain", {"file_path": "src/calc.py", "question": "q"}),
+        # Returns str, so an error string would pass FastMCP's output-schema check.
+        ("generate_audio_overview", {"question": "q"}),
+    ],
+)
+def test_regression_provider_failure_is_tool_error(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, tool: str, args: dict
+):
     # No llm injected: the real provider layer runs and fails before any network call.
     monkeypatch.setenv("VIBETTER_PROVIDER", "anthropic")
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    result = call_tool(
-        create_server(repo), "scholar_explain", {"file_path": "src/calc.py", "question": "q"}
-    )
+    result = call_tool(create_server(repo), tool, args)
     assert result.is_error
-    assert "ANTHROPIC_API_KEY" in text_of(result)
+    assert text_of(result).startswith("ANTHROPIC_API_KEY is not set")
 
 
 def test_debug_error_includes_error_and_file(repo: Path, llm: FakeLLM):
