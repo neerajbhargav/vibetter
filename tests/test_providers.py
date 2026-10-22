@@ -64,9 +64,11 @@ class FakeOllama:
     def __init__(self, *errors: Exception):
         self.errors = list(errors)
         self.models: list[str] = []
+        self.kwargs: list[dict[str, Any]] = []
 
     def chat(self, **kwargs: Any) -> Any:
         self.models.append(kwargs["model"])
+        self.kwargs.append(kwargs)
         if self.errors:
             raise self.errors.pop(0)
         return SimpleNamespace(message=SimpleNamespace(content="ollama answer"))
@@ -185,3 +187,16 @@ def test_anthropic_reply_skips_thinking_blocks():
         call_llm("hi", provider="anthropic", client=FakeAnthropic(blocks=blocks), models=["m"])
     )
     assert out == "final"
+
+
+def test_regression_ollama_window_fits_the_prompt(monkeypatch: pytest.MonkeyPatch):
+    # Ollama's default window silently drops the start of a long prompt,
+    # which is where the retrieved code sits.
+    client = FakeOllama()
+    prompt = "x = 1\n" * 20_000  # 120k characters
+    run(call_llm(prompt, provider="ollama", client=client, models=["qwen2.5-coder:7b"]))
+    num_ctx = client.kwargs[0]["options"]["num_ctx"]
+    assert num_ctx >= len(prompt) // 4
+    assert providers.ollama_num_ctx("short") == 8192
+    monkeypatch.setenv("VIBETTER_OLLAMA_NUM_CTX", "4096")
+    assert providers.ollama_num_ctx(prompt) == 4096

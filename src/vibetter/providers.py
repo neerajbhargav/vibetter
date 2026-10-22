@@ -161,8 +161,26 @@ def _anthropic(client: Any, model: str, prompt: str, json_mode: bool) -> str:
     return "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
 
 
+def ollama_num_ctx(prompt: str) -> int:
+    """A context window that fits the prompt plus room for the answer.
+
+    Ollama's default window is a few thousand tokens and it drops the start of
+    a longer prompt without an error, which would cut the retrieved code.
+    """
+    override = os.getenv("VIBETTER_OLLAMA_NUM_CTX", "").strip()
+    if override.isdigit():
+        return int(override)
+    # ponytail: ~3 characters per token for code; use the model's tokenizer if this misfits.
+    needed = len(prompt) // 3 + MAX_OUTPUT_TOKENS // 2
+    return min(32_768, max(8_192, -(-needed // 1024) * 1024))
+
+
 def _ollama(client: Any, model: str, prompt: str, json_mode: bool) -> str:
-    kwargs: dict[str, Any] = {"model": model, "messages": [{"role": "user", "content": prompt}]}
+    kwargs: dict[str, Any] = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "options": {"num_ctx": ollama_num_ctx(prompt)},
+    }
     if json_mode:
         kwargs["format"] = "json"
     return client.chat(**kwargs).message.content or ""
