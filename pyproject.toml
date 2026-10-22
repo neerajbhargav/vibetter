@@ -54,6 +54,13 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/vibetter"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src", "/tests", "/install.sh", "/install.ps1", "/.env.example", "/uv.lock",
+    "/frontend/src", "/frontend/public", "/frontend/index.html", "/frontend/*.config.js",
+    "/frontend/package.json", "/frontend/package-lock.json",
+]
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"

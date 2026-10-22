@@ -20,6 +20,8 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pyright
+      - name: Build the wheel and sdist
+        run: uv build
 
   test:
     runs-on: ubuntu-latest
