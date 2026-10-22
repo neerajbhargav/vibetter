@@ -3,7 +3,8 @@ import re
 import json
 from fastmcp import FastMCP
 from typing import Dict, Any
-from brain.scholar import (
+from . import scholar as scholar_module
+from .scholar import (
     ask_gemini_with_context,
     generate_architecture_json,
     generate_audio_explanation,
@@ -70,9 +71,7 @@ async def get_blueprint_ui() -> str:
     Interactive Vue Flow map of your codebase dependency graph.
     Call generate_blueprint first, then open this resource to visualize it.
     """
-    dist_dir = os.path.join(
-        os.path.dirname(__file__), "..", "..", "frontend", "dist"
-    )
+    dist_dir = os.path.join(os.path.dirname(__file__), "ui")
     index_path = os.path.join(dist_dir, "index.html")
 
     if not os.path.exists(index_path):
@@ -97,7 +96,6 @@ async def get_blueprint_ui() -> str:
                 html = html.replace(js_match.group(0), f'<script type="module">{f.read()}</script>')
 
     # Inject the latest blueprint data so the UI doesn't need a network call
-    import brain.scholar as scholar_module
     cached = scholar_module._blueprint_cache
     blueprint_json = json.dumps(cached) if cached else "null"
     injection = f"<script>window.__VIBETTER_BLUEPRINT__ = {blueprint_json};</script>"
@@ -106,5 +104,22 @@ async def get_blueprint_ui() -> str:
     return html
 
 
-if __name__ == "__main__":
+def create_server(root=None, llm=None):
+    """Test seam: point the server at a codebase and an LLM callable."""
+    if root is not None:
+        scholar_module.context_manager.observer.stop()
+        scholar_module.context_manager = scholar_module.MasterContextManager(str(root))
+        scholar_module.VIBETTER_CODEBASE_PATH = str(root)
+    if llm is not None:
+        async def _llm(prompt, json_mode=False):
+            return await llm(prompt, json_mode)
+        scholar_module.call_llm = _llm
+    return mcp
+
+
+def main():
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()

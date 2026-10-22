@@ -8,11 +8,8 @@ from gtts import gTTS
 from typing import Dict, Any, Optional
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-import sys
-import os.path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import VIBETTER_CODEBASE_PATH
-from brain.providers import call_llm
+from .config import VIBETTER_CODEBASE_PATH
+from .providers import call_llm
 
 
 class MasterContextManager(FileSystemEventHandler):

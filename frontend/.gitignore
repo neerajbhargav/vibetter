@@ -9,7 +9,7 @@ lerna-debug.log*
 
 node_modules
 dist-ssr
-# dist is intentionally tracked — pre-compiled so users don't need npm
+# The build goes to src/vibetter/ui and is tracked, so users do not need npm
 *.local
 
 # Editor directories and files
