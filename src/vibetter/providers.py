@@ -21,6 +21,7 @@ import sys
 from collections.abc import Callable
 from typing import Any, Literal
 
+from . import trace
 from .config import VibetterError
 
 # Model IDs checked against each provider's model list on 2026-10-21:
@@ -220,12 +221,16 @@ async def call_llm(
     request = REQUEST[provider]
 
     failures: list[tuple[str, BaseException]] = []
-    for model in models:
+    for hops, model in enumerate(models):
         try:
-            return await asyncio.to_thread(request, client, model, prompt, json_mode)
+            reply = await asyncio.to_thread(request, client, model, prompt, json_mode)
         except Exception as e:  # noqa: BLE001 - classified below; unknown errors stop the chain
             failures.append((model, e))
             if classify(e) == "fatal":
                 break
+        else:
+            trace.note(provider=provider, model=model, fallback_hops=hops)
+            return reply
+    trace.note(provider=provider, model=failures[-1][0] if failures else None)
     details = "; ".join(f"{model}: {type(e).__name__}: {e}" for model, e in failures)
     raise ProviderError(f"{provider} request failed ({details}).{_hint(provider, failures)}")
