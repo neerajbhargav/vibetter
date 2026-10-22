@@ -28,5 +28,3 @@ dist-ssr/
 !tsconfig*.json
 !vite.config.*
 
-# Generated outputs
-backend/outputs/

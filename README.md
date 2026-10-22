@@ -2,147 +2,189 @@
 
 **Understand the code your AI just wrote.**
 
-VIBETTER is an MCP server for Claude Code, Cursor, Claude Desktop and Windsurf. It reads your
-actual codebase and answers questions about it with model-generated `file:line` citations,
-explains diffs, suggests fixes in context, and generates a dependency graph from bounded source context.
-Citations are requested in the prompt but are not programmatically validated; verify them against the source.
+VIBETTER is an MCP server for Claude Code, Cursor, Claude Desktop and Windsurf. It indexes your
+repo, sends line-numbered source to the model you choose, and asks for answers that cite
+`path:line`. It explains the latest change (including new untracked files), answers questions
+about a file, diagnoses errors in context, and draws a model-inferred dependency graph.
+The citations are requested in the prompt and the model sees real line numbers, but VIBETTER
+does not yet check them. Verify them against the source.
 
+[![CI](https://github.com/neerajbhargav/vibetter/actions/workflows/ci.yml/badge.svg)](https://github.com/neerajbhargav/vibetter/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/neerajbhargav/vibetter)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![FastMCP 3.0](https://img.shields.io/badge/MCP-FastMCP%203.0-6E56CF)](https://github.com/jlowin/fastmcp)
-[![Providers](https://img.shields.io/badge/providers-Anthropic%20%7C%20OpenAI%20%7C%20Gemini%20%7C%20Ollama-444)](#supported-ai-providers)
 
 ## The problem
 
 AI coding tools ship code faster than you can read it. You accept a diff, the tests pass, and
 six weeks later nobody on the team can explain why that file exists.
 
-VIBETTER closes that loop without slowing you down. It runs inside the same IDE session, reads
-the same repo, and supplies source context to the model rather than only a summary.
-Ask it what changed and why, and get an answer you can verify.
+VIBETTER runs inside the same IDE session, reads the same repo, and gives the model the source
+itself rather than a summary. Ask it what changed and why, then check the cited lines.
 
 ---
 
-## One-Command Install
+## Install
 
-### Mac & Linux
+### Mac and Linux
 ```bash
-curl -fsSL https://raw.githubusercontent.com/neerajbhargav/vibetter/release/nbr/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/neerajbhargav/vibetter/main/install.sh | bash
 ```
 
 ### Windows (PowerShell)
 ```powershell
-iwr -useb https://raw.githubusercontent.com/neerajbhargav/vibetter/release/nbr/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/neerajbhargav/vibetter/main/install.ps1 | iex
 ```
 
-The installer will:
-1. Clone VIBETTER to `~/.vibetter` in the background
-2. Set up an isolated Python environment (no global installs, no Docker)
-3. **Let you choose your AI provider**: Gemini, OpenAI, Anthropic Claude, or Ollama (local)
-4. Ask for your API key and verify it works
-5. **Auto-detect and register** with every IDE it finds on your system (Claude Code, Cursor, Claude Desktop, Windsurf, VS Code)
-6. No restart needed for Claude Code -- works immediately
+The installer:
+1. Clones VIBETTER to `~/.vibetter` and installs it into its own virtualenv (`~/.vibetter/venv`).
+2. Asks for a provider (Gemini, OpenAI, Anthropic or local Ollama) and, for a cloud provider,
+   the API key. Input is hidden.
+3. Stores the key once, in `~/.vibetter/.env` (mode 600 on Mac and Linux). IDE configs get only
+   the `vibetter` command, never the key.
+4. Registers the server with Claude Code (`claude mcp add`), Cursor, Claude Desktop and Windsurf
+   when it finds them. It backs up each JSON config first. A config it cannot parse (for example
+   one with comments) is left unchanged, and the installer prints the manual step instead.
+
+For a non-interactive install, set `VIBETTER_PROVIDER` and the key variable first, for example
+`VIBETTER_PROVIDER=ollama`, or `VIBETTER_PROVIDER=openai OPENAI_API_KEY=...`.
+
+### With uv
+```bash
+uvx --from "vibetter[openai] @ git+https://github.com/neerajbhargav/vibetter" vibetter --version
+```
+Put the provider settings in `~/.vibetter/.env` (see `.env.example`). In the IDE config, the
+command is `uvx` with the arguments `--from`, `vibetter[openai] @ git+https://github.com/neerajbhargav/vibetter`
+and `vibetter`.
 
 ---
 
-## Supported AI Providers
+## Supported providers
 
-| Provider | API Key Required | Models |
-|----------|-----------------|--------|
-| **Google Gemini** | Yes ([free tier](https://aistudio.google.com/apikey)) | gemini-2.0-flash-lite, gemini-2.5-flash, gemini-2.0-flash |
-| **OpenAI / ChatGPT** | Yes ([get key](https://platform.openai.com/api-keys)) | gpt-4o-mini, gpt-4o, gpt-3.5-turbo |
-| **Anthropic Claude** | Yes ([get key](https://console.anthropic.com/settings/keys)) | claude-sonnet-4, claude-haiku-4 |
-| **Ollama** (local) | No | llama3, mistral, codellama |
+| Provider | API key | Default model chain (tried in order) |
+|----------|---------|--------------------------------------|
+| Google Gemini | Yes ([get key](https://aistudio.google.com/apikey)) | gemini-3.5-flash-lite, gemini-3.8-flash, gemini-3.6-flash |
+| OpenAI | Yes ([get key](https://platform.openai.com/api-keys)) | gpt-6-luna, gpt-6.1-sol |
+| Anthropic Claude | Yes ([get key](https://console.anthropic.com/settings/keys)) | claude-haiku-5-5, claude-sonnet-5-5 |
+| Ollama (local) | No | qwen2.5-coder:7b (`ollama pull qwen2.5-coder:7b` first) |
 
-Set `VIBETTER_MODEL` in your `.env` to override the default model for your provider.
+Model IDs were checked against each provider's model list on 2026-10-21. Set `VIBETTER_MODEL`
+in `~/.vibetter/.env` to try another model first. A rate limit, server error, connection error
+or missing model moves to the next model in the chain; an authentication or request error stops
+at once and comes back to the IDE as a tool error.
 
 ---
 
 ## Tools
 
 ### `explain_last_change()`
-Run this right after your AI tool makes edits. Reads your git diff and explains exactly what changed, why it works, and what programming concepts it demonstrates.
+Explains the latest change: staged and unstaged edits plus new untracked files (what an AI agent
+usually creates). On a clean tree it explains the last commit, including a repo's first commit.
+Secret files and lockfiles are left out of the diff.
 
 ### `scholar_explain(file_path, question)`
-Ask any "why" or "how" question about a specific file. Supplies file context and asks the model for an explanation with file:line citations; citation accuracy is not validated.
+Answers a question about one file. The file comes first in the context, then files in the same
+directory, then the rest of the repo by path, all line-numbered, within a 40,000-character budget.
+A path that is not in the index returns an error with the closest matches.
 ```
 scholar_explain("src/auth.js", "Why is the token stored in httpOnly cookies instead of localStorage?")
 ```
 
 ### `debug_error_in_context(error_message, file_path?)`
-Paste any error message. VIBETTER supplies codebase context and asks the model to identify a cause and suggest a concrete fix; verify the diagnosis and cited lines.
+Paste an error message. VIBETTER supplies codebase context and asks the model for the cause and
+a concrete fix. Verify the diagnosis and the cited lines.
 ```
 debug_error_in_context("TypeError: Cannot read properties of undefined (reading 'map')")
 ```
 
 ### `generate_blueprint()`
-Generates an interactive, model-inferred dependency graph from the first 50,000 characters of the assembled codebase context. This is not an exhaustive or statically validated dependency graph. Open `ui://blueprint` in your IDE to visualize it.
+Asks the model for a file dependency graph from the first 50,000 characters of line-numbered
+context. The graph is model-inferred, not static analysis. Open `ui://blueprint` in your IDE to
+view it.
 
 ### `generate_audio_overview(question, file_path?)`
-Creates an MP3 podcast-style walkthrough of your codebase. Great for understanding architecture away from your screen.
-```
-generate_audio_overview("How does data flow from the frontend to the database?")
-```
+Writes a spoken MP3 walkthrough to `~/.vibetter/outputs`. It uses gTTS, which sends the
+transcript to Google's text-to-speech service.
 
 ---
 
-## How It Works
+## How it works
 
-- **Master Context Engine**: Recursively parses your codebase into a single context payload on startup. A Watchdog observer auto-refreshes it on every file save -- so your AI always sees your latest code.
-- **Multi-Provider Support**: Choose between Gemini, OpenAI, Claude, or Ollama. Each provider has its own model fallback chain -- if one model hits quota, the next is tried automatically.
-- **Targeted Context**: For file-specific questions, includes the target file first, then adds files in filesystem traversal order until the next file would exceed the remaining character budget. Additional files are not relevance-ranked; the target file itself is not truncated to that budget.
-- **Blueprint Cache**: `generate_blueprint()` caches its result. Opening `ui://blueprint` immediately serves the visualization without a second AI call.
+- **Index.** In a git repo the file list comes from `git ls-files -co --exclude-standard`, so
+  `.gitignore` applies. Outside git, a walk honors each directory's `.gitignore`. Lockfiles,
+  minified bundles, binaries, files over 1 MB and secret files are skipped; `vibetter index
+  --stats` shows what was skipped and why.
+- **Startup.** The index is built on the first tool call (or in a background thread when the
+  server starts), not at import, so the MCP handshake does not wait for it.
+- **Freshness.** A file watcher waits until saves stop for 0.3 s (at most 5 s), then re-reads
+  only the files that were created, modified, deleted or moved.
+- **Codebase root.** `VIBETTER_CODEBASE_PATH`, else the directory the IDE starts the server in.
+  If that is `/` or your home directory, VIBETTER refuses to index it and tells you to set
+  `VIBETTER_CODEBASE_PATH` in the server config.
+- **Errors.** Provider and lookup failures are MCP tool errors (`isError`), not answer text.
+
+## What leaves your machine
+
+The prompt goes to the provider you chose: the prompt template, your question or error
+message, and the line-numbered context or diff. With Ollama on localhost, nothing leaves. Before sending, VIBETTER
+skips `.env*`, `*.pem`, `*.key`, `*credentials*.json`, `id_rsa*` and similar files, and
+redacts AWS key ids, GitHub tokens, OpenAI, Anthropic and Google keys, JWTs, private key blocks
+and `api_key`/`secret`/`token`/`password` assignments in the remaining text. Redaction is
+pattern-based, so treat it as a safety net, not a guarantee. Repo text goes into the prompt as
+data; a file that contains instructions can still steer the model's answer.
 
 ---
 
 ## Requirements
 
-- Python 3.10 or newer (FastMCP 3 requires it; 3.9 will fail at install)
-- Git
-- An API key for your chosen provider (or Ollama installed locally)
-- Any MCP-compatible IDE: Claude Code, Cursor, Claude Desktop, Windsurf, or VS Code with Roo/Cline
+- Python 3.10 or newer, and git
+- An API key for your chosen provider, or Ollama installed locally
+- An MCP client: Claude Code, Cursor, Claude Desktop, Windsurf, or any other MCP host
 
----
-
-## Manual Setup (if needed)
+## Manual setup
 
 ```bash
-# 1. Clone
 git clone https://github.com/neerajbhargav/vibetter.git ~/.vibetter
-
-# 2. Install deps + your provider SDK
-cd ~/.vibetter && python3 -m venv venv
-venv/bin/pip install -r backend/requirements.txt -q
-venv/bin/pip install openai  # or: google-genai, anthropic, ollama
-
-# 3. Configure your provider
-cat > backend/.env << 'EOF'
-VIBETTER_PROVIDER=openai
-OPENAI_API_KEY=your_key_here
-EOF
-
-# 4. Register with Claude Code
-claude mcp add vibetter -s user \
-  -e VIBETTER_PROVIDER=openai \
-  -e OPENAI_API_KEY=your_key_here \
-  -- ~/.vibetter/venv/bin/python -u ~/.vibetter/backend/src/server.py
+python3 -m venv ~/.vibetter/venv
+~/.vibetter/venv/bin/pip install -e "$HOME/.vibetter[openai]"   # or gemini, anthropic, ollama
+printf 'VIBETTER_PROVIDER=openai\nOPENAI_API_KEY=your_key_here\n' > ~/.vibetter/.env
+chmod 600 ~/.vibetter/.env
+claude mcp add vibetter -s user -- ~/.vibetter/venv/bin/vibetter
 ```
 
-For Cursor / Claude Desktop / Windsurf, add to your `mcp.json`:
+For Cursor, Claude Desktop or Windsurf, add this to the IDE's MCP JSON config, with the full
+path to the command:
 ```json
 {
   "mcpServers": {
     "vibetter": {
-      "command": "~/.vibetter/venv/bin/python",
-      "args": ["-u", "~/.vibetter/backend/src/server.py"],
-      "env": {
-        "VIBETTER_PROVIDER": "openai",
-        "OPENAI_API_KEY": "your_key_here"
-      }
+      "command": "/Users/you/.vibetter/venv/bin/vibetter"
     }
   }
 }
 ```
+
+From a terminal:
+```bash
+vibetter ask "What does divide() do?" --file src/calc.py
+vibetter index --stats
+```
+
+## Development
+
+```bash
+uv sync                      # Python 3.10+, dev tools and all provider SDKs
+uv run pytest                # offline: fake LLM, in-memory MCP client, no keys
+uv run ruff check . && uv run ruff format --check . && uv run pyright
+cd frontend && npm ci && npm run build   # rebuilds src/vibetter/ui
+```
+
+CI runs ruff and pyright, pytest on Python 3.10 to 3.13, the frontend build (which must
+reproduce the committed `src/vibetter/ui`), and syntax checks for both installers.
+
+Repo map: `src/vibetter/` is the package (`server.py` tools, `index.py` file index and
+watcher, `gitdiff.py` change collection, `providers.py` LLM providers, `redact.py` secret
+handling, `ide.py` IDE config registration, `cli.py` the `vibetter` command). `frontend/` is
+the Vue Flow blueprint UI. `tests/` holds the offline suite.
 
 ---
 
