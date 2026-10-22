@@ -15,8 +15,11 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+from collections import defaultdict
+from collections.abc import Iterator
 from pathlib import Path
 
+from .chunk import split_lines
 from .config import VibetterError
 from .index import LOCKFILES, SKIP_DIRS, read_indexable
 from .redact import SECRET_FILE_GLOBS
@@ -47,7 +50,7 @@ def _new_file_patch(root: Path, rel: str) -> str:
         return ""
     if text is None:
         return f"diff --git a/{rel} b/{rel}\nnew untracked file, not shown ({reason})\n"
-    lines = text.splitlines()
+    lines = split_lines(text)
     body = "".join(f"+{line}\n" for line in lines)
     return (
         f"diff --git a/{rel} b/{rel}\nnew untracked file\n--- /dev/null\n+++ b/{rel}\n"
@@ -133,3 +136,69 @@ def fit(diff: str, max_chars: int) -> str:
         out.append(section)
         used += len(section)
     return "".join(out)
+
+
+_HUNK = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+
+
+def _hunks(diff: str) -> Iterator[tuple[str | None, str, str, int | None]]:
+    """Yield (path, line, kind, new_line_number) with exact hunk accounting.
+
+    kind is "header" outside hunks, else the diff tag: "+", "-", " " or "\\".
+    """
+    path: str | None = None
+    old_left = new_left = 0
+    number = 0
+    previous = ""
+    for line in re.split(r"(?<=\n)", diff):
+        if not line:
+            continue
+        if old_left > 0 or new_left > 0:
+            tag = line[:1] if line.strip("\r\n") else " "
+            if tag in "+- \\":
+                yield path, line, tag, number if tag in "+ " else None
+                if tag in "+ ":
+                    number += 1
+                    new_left -= 1
+                if tag in "- ":
+                    old_left -= 1
+                continue
+            old_left = new_left = 0
+        m = _HUNK.match(line)
+        if m:
+            old_left = int(m.group(1)) if m.group(1) is not None else 1
+            number = int(m.group(2))
+            new_left = int(m.group(3)) if m.group(3) is not None else 1
+        elif line.startswith("+++ ") and previous.startswith("--- "):
+            target = line[4:].strip()
+            path = None if target == "/dev/null" else target.removeprefix("b/")
+        previous = line
+        yield path, line, "header", None
+
+
+def number_lines(diff: str) -> str:
+    """Prefix each hunk line with its new-file line number (removed lines get none),
+    so the model can cite path:L12 without doing arithmetic on @@ headers."""
+    out = []
+    for _, line, kind, number in _hunks(diff):
+        if kind in "+ ":
+            out.append(f"{number:>5}| {line}")
+        elif kind == "-":
+            out.append(f"{'':>5}| {line}")
+        else:
+            out.append(line)
+    return "".join(out)
+
+
+def shown_spans(diff: str) -> dict[str, list[tuple[int, int]]]:
+    """New-file line spans that the diff shows, per path."""
+    spans: dict[str, list[tuple[int, int]]] = defaultdict(list)
+    for path, _, kind, number in _hunks(diff):
+        if path is None or number is None or kind not in "+ ":
+            continue
+        current = spans[path]
+        if current and current[-1][1] == number - 1:
+            current[-1] = (current[-1][0], number)
+        else:
+            current.append((number, number))
+    return dict(spans)
