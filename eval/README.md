@@ -104,6 +104,62 @@ set measures it.
 budget falls more than 0.01 below `results/retrieval-baseline.json`. The CI `eval` job runs it
 on every push and pull request, after the label check.
 
+## Answer eval (local model)
+
+The same 66 questions, answered by `qwen2.5-coder:7b` (Q4_K_M, digest `dae161e27b0e`) on
+Ollama 0.40.8 with its default sampling (no seed), 3 runs per arm. Every arm gets a
+24,000-character context.
+
+| Arm | Context and prompt |
+|---|---|
+| v1 | v1's context (arm A, no line numbers) and v1's `scholar_explain` prompt, copied verbatim from `main` |
+| v2 | the `scholar_explain` path: line-numbered retrieved context (arm C) and the v2 prompt |
+| v2-strict | the v2 replies after strict verification, which drops each sentence whose citation fails |
+
+Strict mode changes no prompt, so v2-strict scores the same replies as v2 after the strict
+filter and adds no model call. Both v1 and v2 go through `vibetter.providers`, which sizes
+Ollama's `num_ctx` to the prompt. v1 sent no `num_ctx`, so Ollama would have cut the start of
+its prompt; the eval does not reproduce that bug.
+
+`vibetter.cite` scores every reply, with no model in the loop:
+
+- **Citation validity**: valid citations / all citations. Valid means the file exists in the
+  repo and the cited lines exist.
+- **Groundedness**: valid citations whose lines were in the context the model saw / all
+  citations.
+- **Gold-hit rate**: the share of answers with a valid citation that overlaps a gold span.
+- **Key-term recall**: the mean share of the question's key terms that appear in the answer.
+- **Cited answers**: the share of answers with at least one citation.
+
+### Results
+
+66 questions x 3 runs = 198 answers per arm, `eval/results/llm-2026-10-23.json`, 2026-10-23.
+The run started at vibetter commit `47bcbf8`; the file records `fccae99`, read when the run
+ended, which differs only in README files. Each cell is the mean over 3 runs with a bootstrap
+95% CI over questions; the per-run values are in the file.
+
+| Metric | v1 | v2 | v2-strict |
+|---|---|---|---|
+| Citation validity | 0.653 [0.357, 0.850] | 0.922 [0.884, 0.955] | 1.000 (by construction) |
+| Groundedness | 0.000 [0.000, 0.000] | 0.837 [0.778, 0.890] | 1.000 (by construction) |
+| Gold-hit rate | 0.000 [0.000, 0.000] | 0.343 [0.258, 0.434] | 0.343 [0.258, 0.434] |
+| Key-term recall | 0.264 [0.200, 0.327] | 0.455 [0.375, 0.536] | 0.450 [0.369, 0.531] |
+| Cited answers | 0.086 [0.045, 0.131] | 0.798 [0.737, 0.859] | 0.707 [0.636, 0.773] |
+| Citations per answer | 0.09 | 1.88 | 1.58 |
+
+What the numbers say:
+
+- v1 rarely cites (9% of answers), and none of its citations point at lines it was shown:
+  its context holds no source code, so the few file:line references are recalled or guessed.
+  Its validity of 0.653 rests on about 6 citations per run, hence the wide interval.
+- v2 cites in 80% of answers. 92% of its citations name real lines and 84% name lines it
+  was shown. One answer in three cites a gold span.
+- Strict mode removes every citation that fails, at a small cost: the gold-hit rate is
+  unchanged, key-term recall falls by half a point, and 9% of answers lose all their
+  citations.
+- Run-to-run spread is large. The v2 gold-hit rate was 0.273, 0.348 and 0.409 on the three
+  runs, so a single run can mislead by several points.
+
 ## Commands
 
 ```bash
@@ -113,10 +169,16 @@ uv run python -m eval.run --retrieval --gate           # arms A-C, the CI gate, 
 uv sync --locked --extra dense                         # optional: arm D
 uv run --extra dense python -m eval.run --retrieval    # arms A-D, writes results/retrieval-<date>.json
 uv run python -m eval.run --retrieval --set-baseline   # also rewrites the gate baseline
+ollama pull qwen2.5-coder:7b                           # the answer eval needs a local Ollama
+uv run python -m eval.run --llm                        # 3 runs x 2 arms x 66 questions, writes results/llm-<date>.json
+uv run python -m eval.run --llm --runs 1 --limit 1     # a quick check: 3 questions, 6 model calls
 ```
 
 The first eval command fetches the three repos at depth 1 (about 13 MB on disk). Arm D
-downloads the embedding model (about 64 MB) to `~/.vibetter/models` on first use.
+downloads the embedding model (about 64 MB) to `~/.vibetter/models` on first use. The answer
+eval made 390 model calls in about 3 hours on an Apple M4 Pro that was also running other
+work (the other 6 replies came from the cache of a smoke test with the same prompts). Replies
+are cached under `eval/.cache/llm`, so an interrupted run resumes.
 
 ## Caveats
 
@@ -125,8 +187,16 @@ downloads the embedding model (about 64 MB) to `~/.vibetter/models` on first use
   scores zero.
 - The symbol fix was designed after seeing these results (see above).
 - v1 walked the file system in whatever order it returned. Arm A sorts names at each level so
-  the run is the same on every machine. Another order would show different files, but the
-  changelogs and readmes at the root would still come first.
+  the run is the same on every machine. The order does not change the result here: `os.walk`
+  lists the root's files first, and in each repo those alone exceed 60,000 characters.
+- These repos are popular, so the model may know them from training. Key-term recall can
+  come from that memory; groundedness and gold hits cannot, because they check lines.
+- A gold hit needs only an overlap. Some v2 citations name a whole chunk (about 60 lines), so
+  a hit says the model pointed at the right region, not at the exact lines.
+- Groundedness checks that cited lines were shown, not that the sentence is true. No metric
+  here judges correctness of the prose.
+- One 7B model, quantized, on one machine. Larger or hosted models will score differently.
+  The timings in the results file reflect a shared machine and are not a latency benchmark.
 - 66 questions give wide intervals: a difference of a few points is inside the noise.
 - Result files record the vibetter commit the run started from, and whether tracked files
   outside `eval/results` differed from it.
