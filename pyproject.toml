@@ -76,8 +76,8 @@ select = ["E", "F", "W", "I", "UP", "B", "ASYNC", "BLE", "RUF"]
 "tests/**" = ["BLE001"]
 
 [tool.pyright]
-include = ["src", "tests"]
-exclude = ["tests/fixtures"]
+include = ["src", "tests", "eval"]
+exclude = ["tests/fixtures", "eval/.cache"]
 pythonVersion = "3.10"
 typeCheckingMode = "basic"
 venvPath = "."

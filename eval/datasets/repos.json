@@ -1,0 +1,26 @@
+[
+  {
+    "name": "click",
+    "url": "https://github.com/pallets/click",
+    "ref": "8.5.0",
+    "sha": "8b19813f2bfca99f1018a587a8cf54fc959f2e5d",
+    "language": "Python",
+    "license": "BSD-3-Clause"
+  },
+  {
+    "name": "requests",
+    "url": "https://github.com/psf/requests",
+    "ref": "v2.34.2",
+    "sha": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+    "language": "Python",
+    "license": "Apache-2.0"
+  },
+  {
+    "name": "ky",
+    "url": "https://github.com/sindresorhus/ky",
+    "ref": "v2.2.0",
+    "sha": "3541888878c4d303a8bc2ad61815f4e048f55a5d",
+    "language": "TypeScript",
+    "license": "MIT"
+  }
+]
