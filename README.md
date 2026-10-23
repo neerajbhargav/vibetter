@@ -21,6 +21,28 @@ six weeks later nobody on the team can explain why that file exists.
 VIBETTER runs inside the same IDE session, reads the same repo, and gives the model the source
 itself rather than a summary. Ask it what changed and why, then check the cited lines.
 
+## Results
+
+The public eval asks 66 questions about three pinned repos (click 8.5.0, requests v2.34.2,
+ky v2.2.0), each with gold line spans. Caveats first: the labels come from one pass with no
+held-out set; the symbol-matching rule was changed after this set exposed a problem; and the
+answer eval uses one small local model, whose memory of these popular repos can help its
+key-term recall. Method, all arms and raw results: [eval/README.md](eval/README.md).
+
+| Metric | v1 (`main`) | v2 [95% CI] | n | Setup | Reproduce |
+|---|---|---|---|---|---|
+| Share of gold lines in a 24k-char context | 0.000 | 0.542 [0.429, 0.657] | 66 questions | retrieval only, no LLM, commit `c4eb002` | `uv run python -m eval.run --retrieval` |
+| Share of gold lines in a 60k-char context | 0.000 | 0.798 [0.706, 0.884] | 66 questions | same | same |
+| Citations that name real lines | 0.653 | 0.922 [0.884, 0.955] | 198 answers per arm | qwen2.5-coder:7b Q4_K_M, Ollama 0.40.8, 3 runs, commit `47bcbf8` | `uv run python -m eval.run --llm` |
+| Citations to lines the model was shown | 0.000 | 0.837 [0.778, 0.890] | 198 answers per arm | same | same |
+| Answers that cite a gold span | 0.000 | 0.343 [0.258, 0.434] | 198 answers per arm | same | same |
+
+Measured 2026-10-23. Answer metrics are means of 3 runs; v1's intervals are in the eval README.
+v1's context fills up with each repo's changelog or readme, so it holds no gold line. With
+`strict=true`, every remaining citation names shown lines; the gold-hit rate stays 0.343 and 9%
+of answers lose all their citations. CI re-runs the retrieval eval on every push and fails if
+v2's recall drops more than one point below the committed baseline.
+
 ---
 
 ## Install
