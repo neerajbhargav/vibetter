@@ -61,6 +61,18 @@ def test_symbol_arm_finds_definitions(shop: Path):
     assert "symbol" in hit.arms
 
 
+def test_plain_words_do_not_match_definition_names(tmp_path: Path):
+    # The eval found the symbol arm ranking test functions such as
+    # test_redirect_keeps_auth for an English question that says "redirect".
+    write(tmp_path, "src/session.py", "def resolve(response):\n    return response.next\n")
+    write(tmp_path, "tests/test_session.py", "def test_redirect_keeps_auth():\n    pass\n")
+    r = retriever(tmp_path)
+    assert r._symbol_scores("where is a redirect followed after a response?") == {}
+    assert r._symbol_scores("what does test_redirect_keeps_auth check?")
+    assert r._symbol_scores("what does resolve() return?")
+    assert r._symbol_scores("where is session.py used?")
+
+
 def test_traceback_frame_steers_retrieval(shop: Path):
     line = line_of(shop, "shop/cart.py", "raise ValueError")
     error = (

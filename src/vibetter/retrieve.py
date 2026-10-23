@@ -5,7 +5,7 @@ Three ranked arms, fused by reciprocal rank fusion (RRF, k=60):
   are split; the whole identifier is kept as well),
 - a symbol and path index (definitions from `ast` for Python and from
   regexes for JS, TS and Vue; file names; file:line references such as
-  traceback frames),
+  traceback frames), matched only by identifiers written as code,
 - optionally a dense arm (`pip install 'vibetter[dense]'`: fastembed with
   BAAI/bge-small-en-v1.5).
 
@@ -57,6 +57,7 @@ _GENERIC_DEFS = re.compile(
     re.MULTILINE,
 )
 _KEYWORDS = frozenset({"if", "for", "while", "switch", "catch", "function", "return", "with"})
+_CAMEL = re.compile(r"[a-z][A-Z]|[A-Z]{2}[a-z]")
 
 
 def split_identifier(ident: str) -> list[str]:
@@ -75,6 +76,33 @@ def tokenize(text: str) -> list[str]:
         if len(parts) > 1:
             out.extend(p for p in parts if len(p) > 1 and p not in STOP)
     return out
+
+
+def code_words(query: str) -> set[str]:
+    """The query's identifiers that are written as code, lowercased.
+
+    snake_case, camelCase, dotted names (click.File, cart.py), calls (extend()),
+    keyword arguments (json=) and `backticked` names count. Plain English words
+    are left to BM25: matched against definition names, words such as
+    "redirect" pulled in every test_redirect_* function (see eval/README.md).
+    """
+    words: set[str] = set()
+    for m in _IDENT.finditer(query):
+        ident, start, end = m.group(), m.start(), m.end()
+        before, after = query[start - 1 : start], query[end : end + 1]
+        dotted = (before == "." and query[start - 2 : start - 1].isalnum()) or (
+            after == "." and query[end + 1 : end + 2].isalnum()
+        )
+        if (
+            "_" in ident.strip("_")
+            or "$" in ident
+            or _CAMEL.search(ident)
+            or dotted
+            or before == "`"
+            or after in ("`", "(", "=")
+        ):
+            words.add(ident.lower())
+    return {w for w in words if len(w) > 2} - STOP
 
 
 def definitions(path: str, text: str) -> list[tuple[str, int]]:
@@ -221,8 +249,7 @@ class Retriever:
 
     def _symbol_scores(self, query: str) -> dict[int, float]:
         scores: dict[int, float] = defaultdict(float)
-        words = {w for w in (t.lower() for t in _IDENT.findall(query)) if len(w) > 2}
-        words -= STOP
+        words = code_words(query)
 
         def add(path: str, line: int, weight: float) -> None:
             i = self.chunk_at(path, line)
