@@ -143,6 +143,8 @@ def run(runs: int = 3, limit: int | None = None, model: str = "qwen2.5-coder:7b"
 
 
 async def _run(runs: int, limit: int | None, model: str) -> dict:
+    vibetter_root = EVAL_DIR.parent
+    commit, dirty = git_head(vibetter_root), git_dirty(vibetter_root)  # read before the run
     info = ollama_info(model)
     cache = Cache(model)
     roots = checkouts()
@@ -188,11 +190,10 @@ async def _run(runs: int, limit: int | None, model: str) -> dict:
                     strict = without_note(cite.strip_unverified(hit["reply"], pairs))
                     s = score(q, strict, files, shown, root)
                     rows.append({**base, "arm": "v2-strict", **s, "reply": strict})
-    vibetter_root = EVAL_DIR.parent
     return {
         "eval": "llm",
-        "vibetter_commit": git_head(vibetter_root),
-        "vibetter_dirty": git_dirty(vibetter_root),
+        "vibetter_commit": commit,
+        "vibetter_dirty": dirty,
         "python": platform.python_version(),
         "ollama": info,
         "repos": load_repos(),

@@ -186,6 +186,8 @@ def summarize(rows: list[dict[str, Any]], arms: Sequence[str], budgets: Sequence
 
 
 def run(arms: Sequence[str] = ("A", "B", "C", "D"), budgets: Sequence[int] = BUDGETS) -> dict:
+    vibetter_root = EVAL_DIR.parent
+    commit, dirty = git_head(vibetter_root), git_dirty(vibetter_root)  # read before the run
     arms = list(arms)
     skipped: dict[str, str] = {}
     embedder = fastembed_embedder() if "D" in arms else None
@@ -198,11 +200,10 @@ def run(arms: Sequence[str] = ("A", "B", "C", "D"), budgets: Sequence[int] = BUD
     for repo in load_repos():
         mine = [q for q in questions if q.repo == repo["name"]]
         rows += run_repo(roots[repo["name"]], mine, arms, budgets, embedder)
-    vibetter_root = EVAL_DIR.parent
     return {
         "eval": "retrieval",
-        "vibetter_commit": git_head(vibetter_root),
-        "vibetter_dirty": git_dirty(vibetter_root),
+        "vibetter_commit": commit,
+        "vibetter_dirty": dirty,
         "python": platform.python_version(),
         "repos": load_repos(),
         "questions": len(questions),
