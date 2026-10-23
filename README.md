@@ -164,9 +164,11 @@ flowchart LR
   boundary exists, repeats 5 lines.
 - **Retrieval.** Three ranked lists are fused by reciprocal rank fusion: BM25 over a tokenizer
   that splits camelCase, snake_case and path segments while keeping whole identifiers; a
-  symbol index (definitions, file names, traceback frames); and, with `pip install
-  'vibetter[dense]'`, fastembed embeddings from `BAAI/bge-small-en-v1.5`. The model downloads
-  to `~/.vibetter/models` on first use; `VIBETTER_DENSE=0` turns the arm off.
+  symbol index (definitions, file names, traceback frames) that only identifiers written as
+  code can match; and, with `pip install 'vibetter[dense]'`, fastembed embeddings from
+  `BAAI/bge-small-en-v1.5`. The model downloads to `~/.vibetter/models` on first use;
+  `VIBETTER_DENSE=0` turns the arm off. On the eval set the dense arm lowered recall, so it
+  stays opt-in.
 - **Citation check.** A citation is valid when the file is indexed and the lines exist, and
   grounded when the lines overlap the context the model was shown. The parser accepts
   `path:L12-L20`, `path:12-20`, `path#L12`, `path L12-L20`, `path, lines 12-20` and traceback
@@ -197,8 +199,8 @@ flowchart LR
 - JS, TS and Vue imports come from a regex, not a parser. Imports built at runtime, path
   aliases other than `@/` and `~/`, and other languages are not in the graph. Graphs over 150
   files keep the 150 best connected.
-- Retrieval quality has not been measured yet. An eval is the next step; until then, no
-  accuracy number is claimed.
+- Retrieval is measured on 66 questions about three repos, labeled once, with no held-out set
+  (see [eval/README.md](eval/README.md)). Expect different numbers on your code.
 
 ## What leaves your machine
 
@@ -260,7 +262,8 @@ cd frontend && npm ci && npm run build   # rebuilds src/vibetter/ui
 ```
 
 CI runs ruff and pyright, pytest on Python 3.10 to 3.13, the frontend build (which must
-reproduce the committed `src/vibetter/ui`), and syntax checks for both installers.
+reproduce the committed `src/vibetter/ui`), syntax checks for both installers, and the eval
+job: the label check plus a retrieval recall gate against a committed baseline.
 
 Repo map: `src/vibetter/` is the package: `server.py` (tools), `index.py` (file index and
 watcher), `chunk.py` (line-aware chunks), `retrieve.py` (BM25, symbols, dense arm, RRF and
@@ -269,7 +272,7 @@ and layout), `gitdiff.py` (change collection), `providers.py` (LLM providers), `
 (JSONL and OpenTelemetry traces), `redact.py` (secret handling), `ide.py` (IDE config
 registration) and `cli.py` (the `vibetter` command). `frontend/` is the Vue Flow blueprint UI.
 `tests/` holds the offline suite, and `tests/fixtures/shop` is a synthetic Python and Vue repo
-the tests run against.
+the tests run against. `eval/` holds the public eval: datasets, scripts and raw results.
 
 ---
 
