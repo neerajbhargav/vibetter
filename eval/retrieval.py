@@ -177,11 +177,10 @@ def summarize(rows: list[dict[str, Any]], arms: Sequence[str], budgets: Sequence
                 repo: _stats([r for r in mine if r["repo"] == repo])
                 for repo in dict.fromkeys(r["repo"] for r in mine)
             }
-        base = [r for r in rows if r["arm"] == "A" and r["budget"] == budget]
-        for arm in arms:
-            if arm != "A" and base:
-                mine = [r for r in rows if r["arm"] == arm and r["budget"] == budget]
-                per[arm]["vs_A"] = _delta(base, mine)
+        of = {a: [r for r in rows if r["arm"] == a and r["budget"] == budget] for a in arms}
+        for i, arm in enumerate(arms):
+            for other in arms[:i]:  # every earlier arm, paired by question
+                per[arm][f"vs_{other}"] = _delta(of[other], of[arm])
         summary[str(budget)] = per
     return summary
 
