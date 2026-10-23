@@ -7,6 +7,7 @@ lines. Run: uv run python -m eval.check_labels
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from collections import Counter
@@ -22,7 +23,7 @@ def tag_sha(url: str, ref: str) -> str | None:
         capture_output=True,
         text=True,
         check=False,
-        env={"GIT_TERMINAL_PROMPT": "0", "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"},
+        env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
     )
     shas = dict(line.split("\t")[::-1] for line in out.stdout.splitlines() if "\t" in line)
     # An annotated tag lists the tag object and, with ^{}, the commit it points at.

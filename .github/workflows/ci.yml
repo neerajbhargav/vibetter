@@ -38,6 +38,24 @@ jobs:
       - run: uv sync --locked
       - run: uv run pytest --durations=5
 
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.1
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - uses: actions/cache@v6
+        with:
+          path: eval/.cache
+          key: eval-repos-${{ hashFiles('eval/datasets/repos.json') }}
+      - run: uv sync --locked
+      - name: Gold spans exist at the pinned SHAs
+        run: uv run python -m eval.check_labels
+      - name: Retrieval recall gate (no LLM)
+        run: uv run python -m eval.run --retrieval --gate
+
   frontend:
     runs-on: ubuntu-latest
     steps:
