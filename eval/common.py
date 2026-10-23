@@ -207,6 +207,9 @@ def git_head(path: Path) -> str:
 
 def git_dirty(path: Path) -> bool:
     try:
-        return bool(_git(path, "status", "--porcelain", "--untracked-files=no"))
+        # Result files change on every run; only code and data count as dirty.
+        return bool(
+            _git(path, "status", "--porcelain", "--untracked-files=no", "--", ".", ":!eval/results")
+        )
     except RuntimeError:
         return True
