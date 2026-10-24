@@ -189,7 +189,7 @@ vibetter index --stats                                     # what is indexed and
 ## How it works
 
 ```mermaid
-flowchart LR
+flowchart TD
     Q[question or error] --> R
     subgraph local [on your machine]
         I[index: git ls-files, secrets skipped] --> C[line-aware chunks]
