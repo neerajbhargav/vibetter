@@ -13,6 +13,10 @@ static imports.
 [![License: MIT](https://img.shields.io/github/license/neerajbhargav/vibetter)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 
+![vibetter ask on ky v2.2.0 with qwen2.5-coder:7b: checked citations, one marked as failed](docs/demo.gif)
+
+*A real, uncut recording made with [VHS](https://github.com/charmbracelet/vhs) from [docs/demo.tape](docs/demo.tape): `vibetter ask` on ky v2.2.0, answered by qwen2.5-coder:7b in local Ollama on an Apple M4 Pro, with the model already loaded. Two citations check out. The model also cited `L1415` in a 46-line file, and VIBETTER flags it with the reason. Answers differ between runs; this take was kept because it shows a failed check.*
+
 ## The problem
 
 AI coding tools ship code faster than you can read it. You accept a diff, the tests pass, and
