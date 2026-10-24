@@ -43,40 +43,74 @@ v1's context fills up with each repo's changelog or readme, so it holds no gold 
 of answers lose all their citations. CI re-runs the retrieval eval on every push and fails if
 v2's recall drops more than one point below the committed baseline.
 
----
+## Quickstart
 
-## Install
+Install it and register it with every IDE it finds (Mac and Linux):
 
-### Mac and Linux
 ```bash
 curl -fsSL https://raw.githubusercontent.com/neerajbhargav/vibetter/main/install.sh | bash
 ```
 
-### Windows (PowerShell)
-```powershell
-iwr -useb https://raw.githubusercontent.com/neerajbhargav/vibetter/main/install.ps1 | iex
-```
+On Windows, run `iwr -useb https://raw.githubusercontent.com/neerajbhargav/vibetter/main/install.ps1 | iex`
+in PowerShell. The installer asks for a provider (local Ollama needs no key), then registers
+the server with Claude Code, Cursor, Claude Desktop and Windsurf. Restart the IDE and ask,
+for example, "Use vibetter to explain the last change."
 
-The installer:
-1. Clones VIBETTER to `~/.vibetter` and installs it into its own virtualenv (`~/.vibetter/venv`).
-2. Asks for a provider (Gemini, OpenAI, Anthropic or local Ollama) and, for a cloud provider,
-   the API key. Input is hidden.
-3. Stores the key once, in `~/.vibetter/.env` (mode 600 on Mac and Linux). IDE configs get only
-   the `vibetter` command, never the key.
-4. Registers the server with Claude Code (`claude mcp add`), Cursor, Claude Desktop and Windsurf
-   when it finds them. It backs up each JSON config first. A config it cannot parse (for example
-   one with comments) is left unchanged, and the installer prints the manual step instead.
+No install and no key: `search_code` and `verify_citations` make no model call, and both have
+terminal commands. Try them on the test fixture, a small synthetic bookshop (needs
+[uv](https://docs.astral.sh/uv/)):
 
-For a non-interactive install, set `VIBETTER_PROVIDER` and the key variable first, for example
-`VIBETTER_PROVIDER=ollama`, or `VIBETTER_PROVIDER=openai OPENAI_API_KEY=...`.
-
-### With uv
 ```bash
-uvx --from "vibetter[openai] @ git+https://github.com/neerajbhargav/vibetter" vibetter --version
+git clone https://github.com/neerajbhargav/vibetter && cd vibetter/tests/fixtures/shop
+uv run vibetter search "how is a discount code applied" --limit 1
+printf 'Big discounts raise at shop/cart.py:L24-L25 `raise ValueError`.\nCoupons expire in shop/coupons.py:L12.\n' | uv run vibetter verify
 ```
-Put the provider settings in `~/.vibetter/.env` (see `.env.example`). In the IDE config, the
-command is `uvx` with the arguments `--from`, `vibetter[openai] @ git+https://github.com/neerajbhargav/vibetter`
-and `vibetter`.
+
+The search prints the best chunk, `--- shop/cart.py:L1-L31 ---`, with numbered lines. The
+verify command prints the following and exits with status 2, because one citation failed:
+
+```
+citations: 2 found, 1 valid
+  ok shop/cart.py:L24-L25
+  !! shop/coupons.py:L12  (file not indexed)
+```
+
+## Connect your IDE
+
+The installer writes these entries for you. To add VIBETTER by hand, or to run it with `uvx`
+and no install, use the snippets below. They use local Ollama, which needs no key. For a cloud
+provider, swap the extra (`gemini`, `openai` or `anthropic`) and put the key in
+`~/.vibetter/.env` (see [.env.example](.env.example)), never in the IDE config.
+
+Claude Code starts the server in your project folder:
+
+```bash
+claude mcp add vibetter -s user -e VIBETTER_PROVIDER=ollama -- uvx --from "vibetter[ollama] @ git+https://github.com/neerajbhargav/vibetter" vibetter
+```
+
+Cursor (`~/.cursor/mcp.json`, or `.cursor/mcp.json` in a project) and Claude Desktop
+(`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS,
+`%APPDATA%\Claude\claude_desktop_config.json` on Windows) take the same JSON:
+
+```json
+{
+  "mcpServers": {
+    "vibetter": {
+      "command": "uvx",
+      "args": ["--from", "vibetter[ollama] @ git+https://github.com/neerajbhargav/vibetter", "vibetter"],
+      "env": {
+        "VIBETTER_PROVIDER": "ollama",
+        "VIBETTER_CODEBASE_PATH": "/path/to/your/project"
+      }
+    }
+  }
+}
+```
+
+Claude Desktop is not tied to a project, so it needs `VIBETTER_CODEBASE_PATH`. Without it,
+VIBETTER refuses to index `/` or your home directory and says so. If the app cannot find
+`uvx`, use its full path (`which uvx`). After the installer, the command is
+`~/.vibetter/venv/bin/vibetter` with no arguments.
 
 ---
 
@@ -93,8 +127,6 @@ Model IDs were checked against each provider's model list on 2026-10-21. Set `VI
 in `~/.vibetter/.env` to try another model first. A rate limit, server error, connection error
 or missing model moves to the next model in the chain; an authentication or request error stops
 at once and comes back to the IDE as a tool error.
-
----
 
 ## Tools
 
@@ -143,21 +175,14 @@ open the resource.
 Writes a spoken MP3 walkthrough to `~/.vibetter/outputs`. It uses gTTS, which sends the
 transcript to Google's text-to-speech service.
 
-### Try it without a key
-`search_code` and `verify_citations` need no provider, and both have terminal commands. The
-test fixture is a small synthetic bookshop:
+### From a terminal
+
 ```bash
-git clone https://github.com/neerajbhargav/vibetter && cd vibetter/tests/fixtures/shop
-uv run vibetter search "how is a discount code applied" --limit 1
-printf 'Big discounts raise at shop/cart.py:L24-L25 `raise ValueError`.\nCoupons expire in shop/coupons.py:L12.\n' | uv run vibetter verify
+vibetter ask "What does divide() do?" --file src/calc.py   # prints checked citations
+vibetter search "where are tokens refreshed"               # no LLM call
+vibetter verify answer.md                                  # exit 2 if a citation fails
+vibetter index --stats                                     # what is indexed and skipped
 ```
-The second command prints:
-```
-citations: 2 found, 1 valid
-  ok shop/cart.py:L24-L25
-  !! shop/coupons.py:L12  (file not indexed)
-```
-and exits with status 2 because one citation failed.
 
 ---
 
@@ -167,125 +192,91 @@ and exits with status 2 because one citation failed.
 flowchart LR
     Q[question or error] --> R
     subgraph local [on your machine]
-        I[index: git ls-files, skips secrets and noise] --> C[chunker: ast and brace boundaries]
-        C --> R[retrieval: BM25 + symbols + optional dense, fused by RRF]
-        R --> A[context: path:L headers, numbered lines]
-        V[citation check: file, lines, shown context, quote]
+        I[index: git ls-files, secrets skipped] --> C[line-aware chunks]
+        C --> R[BM25 + symbol/path index, fused by RRF, + optional dense arm]
+        R --> X[budgeted context: path:L headers, numbered lines]
+        P[citation parser] --> V[verifier: file, lines, shown context, quote]
     end
-    A --> M[LLM provider]
-    M --> V
-    V --> O[answer + checked citations]
+    X -- redacted prompt --> M[model: Ollama or a hosted API]
+    M --> P
+    V --> O[structured answer: text, checked citations, stats]
 ```
 
-- **Index.** In a git repo the file list comes from `git ls-files -co --exclude-standard`, so
-  `.gitignore` applies. Outside git, a walk honors each directory's `.gitignore`. Lockfiles,
-  minified bundles, binaries, files over 1 MB and secret files are skipped; `vibetter index
-  --stats` shows what was skipped and why.
-- **Chunks.** About 60 lines each, at most 120. Python chunks end at top-level definitions
-  found with `ast`; other files end at blank lines outside braces. Only a forced cut, where no
-  boundary exists, repeats 5 lines.
-- **Retrieval.** Three ranked lists are fused by reciprocal rank fusion: BM25 over a tokenizer
-  that splits camelCase, snake_case and path segments while keeping whole identifiers; a
-  symbol index (definitions, file names, traceback frames) that only identifiers written as
-  code can match; and, with `pip install 'vibetter[dense]'`, fastembed embeddings from
-  `BAAI/bge-small-en-v1.5`. The model downloads to `~/.vibetter/models` on first use;
-  `VIBETTER_DENSE=0` turns the arm off. On the eval set the dense arm lowered recall, so it
-  stays opt-in.
-- **Citation check.** A citation is valid when the file is indexed and the lines exist, and
-  grounded when the lines overlap the context the model was shown. The parser accepts
-  `path:L12-L20`, `path:12-20`, `path#L12`, `path L12-L20`, `path, lines 12-20` and traceback
-  frames. The prompt's example citation uses placeholders (`path:L<first>-L<last>`), not
-  numbers: a model can copy an example word for word, and a copied range of real lines would
-  pass the check.
-- **Freshness.** A file watcher waits until saves stop for 0.3 s (at most 5 s), then re-reads
-  only the files that changed. The retriever re-chunks only those files.
-- **Startup.** The index is built on the first tool call (or in a background thread when the
-  server starts), not at import, so the MCP handshake does not wait for it.
-- **Codebase root.** `VIBETTER_CODEBASE_PATH`, else the directory the IDE starts the server in.
-  If that is `/` or your home directory, VIBETTER refuses to index it and tells you to set
-  `VIBETTER_CODEBASE_PATH` in the server config.
-- **Ollama.** The request sets `num_ctx` to fit the prompt (8k to 32k tokens). Without it,
-  Ollama keeps its small default window and drops the start of a long prompt without an error.
-  `VIBETTER_OLLAMA_NUM_CTX` overrides it.
-- **Traces.** Each tool call appends one JSON line to `~/.vibetter/traces.jsonl`: tool,
-  provider, model, latency, prompt size, chunks retrieved and citation counts.
-  `VIBETTER_TRACE=0` turns it off. With `pip install 'vibetter[otel]'` and `VIBETTER_OTEL=1`,
-  each call is also exported as an OpenTelemetry span over OTLP.
-- **Errors.** Provider and lookup failures are MCP tool errors (`isError`), not answer text.
+VIBETTER indexes the files git tracks and splits them into chunks of about 60 lines that end
+at function or block boundaries. A question runs through BM25 and a symbol and path index,
+and reciprocal rank fusion merges the two rankings, plus a dense ranking when that extra is
+installed. The best chunks are packed into a fixed character budget, each line prefixed with
+its number, and VIBETTER records exactly which lines it packed. The model's reply goes through
+a parser that finds every `path:line` citation, and a verifier that checks each one against
+the index and against the packed lines, with no model call. The tool returns the answer with
+one verdict per citation. Module-level detail and the full verifier contract are in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Design decisions
+
+- Chose lookup-based citation checks over an LLM judge, because a lookup costs no tokens, gives
+  the same verdict on every run, and cannot be argued out of it.
+- Chose BM25 plus a symbol and path index over embeddings by default, because the dense arm
+  lowered recall in a 60k context from 0.798 to 0.636 (66 questions,
+  [eval/results/retrieval-2026-10-23.json](eval/results/retrieval-2026-10-23.json)). Dense
+  stays an opt-in extra.
+- Chose line-numbered context with recorded spans over raw file text, because a model can only
+  cite lines it sees numbered, and the spans let the verifier tell real lines from lines the
+  model was actually shown.
+- Chose static imports over a model-drawn graph, because v1 asked the model for edges and
+  positions, which it could invent, while static analysis gives the same graph for the same
+  files.
+- Chose placeholder citation examples in the prompt over numeric ones, because
+  qwen2.5-coder:7b copied a numeric example word for word, and a copied range of real lines
+  passes the check.
+- Chose one key file, `~/.vibetter/.env` (mode 600), over keys in IDE configs, because IDE
+  configs get synced, shared and pasted into bug reports.
+
+## What leaves your machine
+
+The prompt goes to the provider you chose: the prompt template, your question or error
+message, and the line-numbered context or diff. With Ollama on localhost, no prompt leaves.
+The one exception is `generate_audio_overview`, which sends its transcript to Google's
+text-to-speech service. Before sending, VIBETTER skips `.env*`, `*.pem`, `*.key`,
+`*credentials*.json`, `id_rsa*` and similar files, and redacts AWS key ids, GitHub tokens,
+OpenAI, Anthropic and Google keys, JWTs, private key blocks and
+`api_key`/`secret`/`token`/`password` assignments in the remaining text. Redaction is
+pattern-based, so treat it as a safety net, not a guarantee. `search_code` hits are redacted
+the same way, because the host agent sends them to its own model. Traces stay in
+`~/.vibetter/traces.jsonl`; with `VIBETTER_OTEL=1` they also go to the OTLP endpoint you set.
 
 ## Limitations
 
 - The check proves that a citation points at real lines the model saw. It does not prove that
   the sentence around it is true. A claim with no citation is not checked; strict mode only
   flags an answer that has no citations at all.
+- Small local models do not always cite. In the answer eval, qwen2.5-coder:7b cited in 0.798
+  of v2 answers (198 answers), so about one answer in five has nothing to check. A bare range
+  with no path, such as "and L43-L46" after a citation, is not parsed.
+- Repo text goes into the prompt as data. A file that contains instructions can steer the
+  model's answer; the verifier still checks its citations, but not its prose.
 - JS, TS and Vue imports come from a regex, not a parser. Imports built at runtime, path
   aliases other than `@/` and `~/`, and other languages are not in the graph. Graphs over 150
   files keep the 150 best connected.
 - Retrieval is measured on 66 questions about three repos, labeled once, with no held-out set
   (see [eval/README.md](eval/README.md)). Expect different numbers on your code.
 
-## What leaves your machine
-
-The prompt goes to the provider you chose: the prompt template, your question or error
-message, and the line-numbered context or diff. With Ollama on localhost, nothing leaves. Before sending, VIBETTER
-skips `.env*`, `*.pem`, `*.key`, `*credentials*.json`, `id_rsa*` and similar files, and
-redacts AWS key ids, GitHub tokens, OpenAI, Anthropic and Google keys, JWTs, private key blocks
-and `api_key`/`secret`/`token`/`password` assignments in the remaining text. Redaction is
-pattern-based, so treat it as a safety net, not a guarantee. `search_code` hits are redacted
-the same way, because the host agent sends them to its own model. Repo text goes into the prompt as
-data; a file that contains instructions can still steer the model's answer.
-
----
-
-## Requirements
-
-- Python 3.10 or newer, and git
-- An API key for your chosen provider, or Ollama installed locally
-- An MCP client: Claude Code, Cursor, Claude Desktop, Windsurf, or any other MCP host
-
-## Manual setup
-
-```bash
-git clone https://github.com/neerajbhargav/vibetter.git ~/.vibetter
-python3 -m venv ~/.vibetter/venv
-~/.vibetter/venv/bin/pip install -e "$HOME/.vibetter[openai]"   # or gemini, anthropic, ollama
-printf 'VIBETTER_PROVIDER=openai\nOPENAI_API_KEY=your_key_here\n' > ~/.vibetter/.env
-chmod 600 ~/.vibetter/.env
-claude mcp add vibetter -s user -- ~/.vibetter/venv/bin/vibetter
-```
-
-For Cursor, Claude Desktop or Windsurf, add this to the IDE's MCP JSON config, with the full
-path to the command:
-```json
-{
-  "mcpServers": {
-    "vibetter": {
-      "command": "/Users/you/.vibetter/venv/bin/vibetter"
-    }
-  }
-}
-```
-
-From a terminal:
-```bash
-vibetter ask "What does divide() do?" --file src/calc.py   # prints checked citations
-vibetter search "where are tokens refreshed"               # no LLM call
-vibetter verify answer.md                                  # exit 2 if a citation fails
-vibetter index --stats
-```
-
 ## Development
 
 ```bash
-uv sync                      # Python 3.10+, dev tools, all provider SDKs, OpenTelemetry SDK
-uv run pytest                # offline: fake LLM, in-memory MCP client, no keys
+uv sync                                          # Python 3.10+, dev tools, provider SDKs
+uv run pytest                                    # offline: fake LLM, in-memory MCP client, no keys
 uv run ruff check . && uv run ruff format --check . && uv run pyright
-cd frontend && npm ci && npm run build   # rebuilds src/vibetter/ui
+uv run python -m eval.run --retrieval --gate     # deterministic retrieval eval, no LLM
+cd frontend && npm ci && npm run build           # rebuilds src/vibetter/ui
 ```
 
-CI runs ruff and pyright, pytest on Python 3.10 to 3.13, the frontend build (which must
-reproduce the committed `src/vibetter/ui`), syntax checks for both installers, and the eval
-job: the label check plus a retrieval recall gate against a committed baseline.
+CI runs ruff and pyright, builds the wheel, runs pytest on Python 3.10 to 3.13, rebuilds the
+frontend (which must reproduce the committed `src/vibetter/ui`), checks both installers'
+syntax, and runs the eval job: the label check plus a retrieval recall gate that fails if v2's
+recall drops more than one point below the committed baseline. The answer eval needs a local
+Ollama and runs by hand (`uv run python -m eval.run --llm`). `vhs docs/demo.tape` re-records
+the demo.
 
 Repo map: `src/vibetter/` is the package: `server.py` (tools), `index.py` (file index and
 watcher), `chunk.py` (line-aware chunks), `retrieve.py` (BM25, symbols, dense arm, RRF and
@@ -295,6 +286,8 @@ and layout), `gitdiff.py` (change collection), `providers.py` (LLM providers), `
 registration) and `cli.py` (the `vibetter` command). `frontend/` is the Vue Flow blueprint UI.
 `tests/` holds the offline suite, and `tests/fixtures/shop` is a synthetic Python and Vue repo
 the tests run against. `eval/` holds the public eval: datasets, scripts and raw results.
+`docs/` holds the architecture notes and the demo. Changes are listed in
+[CHANGELOG.md](CHANGELOG.md).
 
 ---
 
