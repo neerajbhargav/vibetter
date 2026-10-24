@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from conftest import write
+from conftest import git, write
 from watchdog.events import FileDeletedEvent, FileModifiedEvent, FileMovedEvent
 
 from vibetter.config import ConfigError, resolve_root
@@ -24,6 +24,12 @@ def built(root: Path) -> CodebaseIndex:
     index = CodebaseIndex(root)
     index.build()
     return index
+
+
+def test_regression_fixture_repo_has_no_background_maintenance(repo: Path):
+    # Background maintenance raced the per-test copy of the fixture repo in CI.
+    assert git(repo, "config", "--get", "maintenance.auto").strip() == "false"
+    assert git(repo, "config", "--get", "gc.auto").strip() == "0"
 
 
 def test_indexes_tracked_and_untracked_source_files(repo: Path):

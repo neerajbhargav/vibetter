@@ -136,6 +136,10 @@ def _templates(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
     env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
     for args in (
         ["init", "-q", "-b", "main"],
+        # A commit can start `git maintenance` in the background. Its lock file then
+        # appears and vanishes while a test copies the repo, and copytree fails (CI, 3.12).
+        ["config", "maintenance.auto", "false"],
+        ["config", "gc.auto", "0"],
         ["add", "-A"],
         [
             "-c",
