@@ -8,6 +8,10 @@ Arms, at the same 24k-character context budget:
 
 Every reply is scored by the same deterministic checker (vibetter.cite). Replies are
 cached under eval/.cache/llm, so an interrupted run resumes where it stopped.
+
+rescore() scores the replies stored in a committed result file again, with no model
+call, so the committed numbers can be reproduced in seconds and a change to the
+checker can be measured on the same replies.
 """
 
 from __future__ import annotations
@@ -46,6 +50,7 @@ OLLAMA = "http://127.0.0.1:11434"
 BUDGET = EXPLAIN_CHARS
 ARMS = ("v1", "v2", "v2-strict")
 STRICT_NOTE = "\n\n[vibetter strict:"
+NARROW = 30  # gold_hit_narrow counts only citations of at most this many lines
 
 
 def v1_prompt(question: str, context: str) -> str:
@@ -89,9 +94,50 @@ def score(
         "valid": sum(c.valid for c in checks),
         "grounded": sum(c.valid and c.grounded is True for c in checks),
         "gold_hit": any(c.valid and hits_gold(q, c.path, c.start, c.end) for c in checks),
+        "gold_hit_narrow": any(
+            c.valid and c.end - c.start < NARROW and hits_gold(q, c.path, c.start, c.end)
+            for c in checks
+        ),
         "term_recall": sum(t.lower() in lowered for t in q.terms) / len(q.terms),
         "chars": len(text.strip()),
     }
+
+
+def score_reply(
+    q: Question, base: dict[str, Any], arm: str, reply: str, ctx: dict[str, Any], root: Path
+) -> list[dict[str, Any]]:
+    """Rows for one reply: the v1 row, or the v2 row and its v2-strict row."""
+    if arm == "v1":
+        return [{**base, "arm": "v1", **score(q, reply, ctx["files_v1"], ctx["shown_v1"], root)}]
+    files, shown = ctx["files"], ctx["shown"][q.id]
+    strict = without_note(cite.strip_unverified(reply, cite.check(reply, files, shown, root)))
+    return [
+        {**base, "arm": "v2", **score(q, reply, files, shown, root)},
+        {**base, "arm": "v2-strict", **score(q, strict, files, shown, root), "reply": strict},
+    ]
+
+
+def contexts(root: Path, questions: Sequence[Question]) -> dict[str, Any]:
+    """What each arm showed the model for one repo: files, shown spans and prompts."""
+    app = Vibetter(root, embedder=False)
+    files = dict(app.index().files)
+    old = v1_files(root)
+    context_v1, shown_v1 = v1_context(old, BUDGET)
+    ctx: dict[str, Any] = {
+        "files": files,
+        "files_v1": {**dict(old), **files},
+        "shown_v1": shown_v1,
+        "shown": {},
+        "prompts": {},
+    }
+    for q in questions:
+        _, context, shown = app._gather(q.question, None, BUDGET)
+        ctx["shown"][q.id] = shown
+        ctx["prompts"][q.id] = {
+            "v1": v1_prompt(q.question, context_v1),
+            "v2": redact(prompts.explain(q.question, context, None)),
+        }
+    return ctx
 
 
 class Cache:
@@ -157,17 +203,12 @@ async def _run(runs: int, limit: int | None, model: str) -> dict:
     started, calls = time.perf_counter(), 0
     for repo in load_repos():
         root = roots[repo["name"]]
-        app = Vibetter(root, embedder=False)
-        files = dict(app.index().files)
-        old = v1_files(root)
-        files_v1 = {**dict(old), **files}
-        context_v1, shown_v1 = v1_context(old, BUDGET)
-        for q in (x for x in questions if x.repo == repo["name"]):
-            _, context, shown = app._gather(q.question, None, BUDGET)
-            prompt_v2 = redact(prompts.explain(q.question, context, None))
-            prompt_v1 = v1_prompt(q.question, context_v1)
+        mine = [q for q in questions if q.repo == repo["name"]]
+        ctx = contexts(root, mine)
+        for q in mine:
             for run_no in range(1, runs + 1):
-                for arm, prompt in (("v1", prompt_v1), ("v2", prompt_v2)):
+                for arm in ("v1", "v2"):
+                    prompt = ctx["prompts"][q.id][arm]
                     hit = cache.get(arm, run_no, q.id, prompt)
                     if hit is None:
                         reply, seconds = await ask(prompt, model)
@@ -180,16 +221,9 @@ async def _run(runs: int, limit: int | None, model: str) -> dict:
                             flush=True,
                         )
                     base = {"id": q.id, "repo": q.repo, "run": run_no, "seconds": hit["seconds"]}
-                    if arm == "v1":
-                        s = score(q, hit["reply"], files_v1, shown_v1, root)
-                        rows.append({**base, "arm": "v1", **s, "reply": hit["reply"]})
-                        continue
-                    s = score(q, hit["reply"], files, shown, root)
-                    rows.append({**base, "arm": "v2", **s, "reply": hit["reply"]})
-                    pairs = cite.check(hit["reply"], files, shown, root)
-                    strict = without_note(cite.strip_unverified(hit["reply"], pairs))
-                    s = score(q, strict, files, shown, root)
-                    rows.append({**base, "arm": "v2-strict", **s, "reply": strict})
+                    new = score_reply(q, base, arm, hit["reply"], ctx, root)
+                    new[0]["reply"] = hit["reply"]
+                    rows += new
     return {
         "eval": "llm",
         "vibetter_commit": commit,
@@ -200,6 +234,54 @@ async def _run(runs: int, limit: int | None, model: str) -> dict:
         "questions": len(questions),
         "runs": runs,
         "budget_chars": BUDGET,
+        **_descriptions(),
+        "summary": summarize(rows, runs),
+        "rows": rows,
+    }
+
+
+def rescore(source: Path) -> dict:
+    """Score the v1 and v2 replies in a result file again with the current checker.
+
+    No model is called. The contexts are rebuilt by the same deterministic retrieval,
+    so the shown spans match the run as long as retrieval has not changed (the
+    retrieval eval's rows show that). Rows keep no reply text; the source file has it.
+    """
+    old = json.loads(source.read_text(encoding="utf-8"))
+    vibetter_root = EVAL_DIR.parent
+    commit, dirty = git_head(vibetter_root), git_dirty(vibetter_root)
+    roots = checkouts()
+    questions = {q.id: q for q in load_questions()}
+    rows: list[dict[str, Any]] = []
+    for repo in old["repos"]:
+        mine = [r for r in old["rows"] if r["repo"] == repo["name"] and r["arm"] in ("v1", "v2")]
+        root = roots[repo["name"]]
+        ctx = contexts(root, [questions[i] for i in dict.fromkeys(r["id"] for r in mine)])
+        for r in mine:
+            base = {k: r[k] for k in ("id", "repo", "run", "seconds")}
+            rows += score_reply(questions[r["id"]], base, r["arm"], r["reply"], ctx, root)
+    for r in rows:
+        r.pop("reply", None)
+    return {
+        "eval": "llm-rescore",
+        "rescored_from": source.name,
+        "replies_from_commit": old["vibetter_commit"],
+        "vibetter_commit": commit,
+        "vibetter_dirty": dirty,
+        "python": platform.python_version(),
+        "ollama": old["ollama"],
+        "repos": old["repos"],
+        "questions": old["questions"],
+        "runs": old["runs"],
+        "budget_chars": old["budget_chars"],
+        **_descriptions(),
+        "summary": summarize(rows, old["runs"]),
+        "rows": rows,
+    }
+
+
+def _descriptions() -> dict[str, Any]:
+    return {
         "arms": {
             "v1": "v1 context (walk order, first 24k chars, no line numbers) and v1 prompt",
             "v2": "line-numbered retrieved context (BM25 + symbol RRF) and v2 prompt",
@@ -209,13 +291,15 @@ async def _run(runs: int, limit: int | None, model: str) -> dict:
             "citation_validity": "valid citations / all citations (file indexed, lines exist)",
             "groundedness": "valid citations whose lines were in the context shown / all citations",
             "gold_hit_rate": "share of answers with a valid citation that overlaps a gold span",
+            "gold_hit_rate_narrow": f"gold_hit_rate, counting only citations of at most {NARROW}"
+            " lines",
             "term_recall": "mean share of the question's key terms that appear in the answer",
             "cited_answers": "share of answers with at least one citation",
+            "mean": "the mean of the per-run values",
+            "pooled": "the value over all runs' answers pooled, which ci95 is built around",
             "ci95": "percentile bootstrap over questions (per-question values pooled over runs),"
             " 10,000 resamples, seed 0",
         },
-        "summary": summarize(rows, runs),
-        "rows": rows,
     }
 
 
@@ -225,6 +309,7 @@ def _metrics(rows: Sequence[dict[str, Any]]) -> dict[str, float]:
         "citation_validity": sum(r["valid"] for r in rows) / cites if cites else 0.0,
         "groundedness": sum(r["grounded"] for r in rows) / cites if cites else 0.0,
         "gold_hit_rate": mean([float(r["gold_hit"]) for r in rows]),
+        "gold_hit_rate_narrow": mean([float(r.get("gold_hit_narrow", False)) for r in rows]),
         "term_recall": mean([r["term_recall"] for r in rows]),
         "cited_answers": mean([float(r["citations"] > 0) for r in rows]),
         "citations_per_answer": cites / len(rows) if rows else 0.0,
@@ -251,6 +336,7 @@ def summarize(rows: list[dict[str, Any]], runs: int) -> dict[str, Any]:
             stat[name] = {
                 "per_run": [round(v, 4) for v in values],
                 "mean": round(mean(values), 4),
+                "pooled": round(pooled[name], 4),
                 "ci95": [round(x, 4) for x in bootstrap(len(groups), boot)],
             }
         stat["median_seconds"] = sorted(r["seconds"] for r in mine)[len(mine) // 2] if mine else 0

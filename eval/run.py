@@ -4,6 +4,9 @@ uv run python -m eval.run --retrieval           all arms; writes results/retriev
 uv run python -m eval.run --retrieval --gate    arms A-C; fails if arm C recall drops (CI)
 uv run python -m eval.run --retrieval --set-baseline   also rewrites the committed baseline
 uv run python -m eval.run --llm                 local Ollama, 3 runs; writes results/llm-<date>.json
+uv run python -m eval.run --llm --rescore eval/results/llm-2026-10-23.json
+                                                no model call: scores the committed replies
+                                                again; writes results/<name>-rescored.json
 """
 
 from __future__ import annotations
@@ -37,12 +40,19 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--limit", type=int, default=None, help="LLM: first N questions per repo")
     p.add_argument("--model", default="qwen2.5-coder:7b", help="Ollama model")
     p.add_argument("--out", default=None, help="results file name under eval/results/")
+    p.add_argument("--rescore", default=None, help="LLM: score the replies in this result file")
     args = p.parse_args(argv)
     today = dt.date.today().isoformat()
 
     if args.llm:
         from . import llm
 
+        if args.rescore:
+            source = Path(args.rescore)
+            result = llm.rescore(source)
+            print(llm.table(result))
+            write(result, args.out or f"{source.stem}-rescored.json")
+            return 0
         result = llm.run(runs=args.runs, limit=args.limit, model=args.model)
         print(llm.table(result))
         write(result, args.out or f"llm-{today}.json")
