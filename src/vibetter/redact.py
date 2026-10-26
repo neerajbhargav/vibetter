@@ -15,6 +15,8 @@ SECRET_FILE_GLOBS = (
     ".env",
     ".env.*",
     "*.env",
+    ".envrc",
+    "*.envrc",
     "*.pem",
     "*.key",
     "*.p12",
@@ -45,11 +47,20 @@ _TOKENS = re.compile(
     r"|eyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}"  # JWT
     r")"
 )
-_SECRET_NAME = r"[A-Za-z0-9_.-]*(?:api[_-]?key|secret|token|passw(?:or)?d|credential)[A-Za-z0-9_]*"
+# Bounded repeats: an unbounded name scan is quadratic on a long run of word characters.
+_SECRET_NAME = (
+    r"[A-Za-z0-9_.-]{0,64}(?:api[_-]?key|secret|token|passw(?:or)?d|credential)[A-Za-z0-9_]{0,64}"
+)
 # name = "value" / name: 'value' in code and config, with a quoted value.
 _QUOTED_ASSIGNMENT = re.compile(rf"(?i)(\b{_SECRET_NAME}[\"']?\s*[:=]\s*)([\"'])([^\"'\s]{{8,}})\2")
-# NAME=value in dotenv and shell files, at the start of a line.
-_DOTENV_ASSIGNMENT = re.compile(rf"(?im)^(\s*(?:export\s+)?{_SECRET_NAME}=)([^\s#\"']{{8,}})")
+# NAME=value in dotenv and shell files, at the start of a line. The line may carry the
+# prefixes added before text is sent: `  12| ` in context blocks, `+` or `-` in a diff.
+# A value that runs into a bracket is code (`token=get_token()`), not a secret.
+_LINE_PREFIX = r"[ \t]*(?:\d*\|[ \t]*)?(?:[+\-][ \t]*)?"
+_DOTENV_ASSIGNMENT = re.compile(
+    rf"(?im)^({_LINE_PREFIX}(?:export[ \t]+)?{_SECRET_NAME}=)"
+    r"([^\s#\"'(){}\[\]]{8,})(?![^\s#])"
+)
 
 
 def is_secret_path(rel_path: str) -> bool:

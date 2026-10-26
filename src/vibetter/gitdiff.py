@@ -29,8 +29,9 @@ class GitError(VibetterError):
     pass
 
 
+# icase: the index skips secret files by a lowercased name, so the diff must too (PROD.ENV).
 _EXCLUDES = [
-    f":(exclude,glob)**/{g}"
+    f":(exclude,glob,icase)**/{g}"
     for g in (*SECRET_FILE_GLOBS, *sorted(LOCKFILES), "*.min.js", "*.min.css")
 ]
 _PATHSPEC = ["--", ".", *_EXCLUDES]

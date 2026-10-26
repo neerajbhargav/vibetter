@@ -118,6 +118,59 @@ def test_regression_search_code_output_redacted(repo: Path, llm: FakeLLM):
     assert "TIMEOUT = 30" in text
 
 
+DEPLOY_SH = "#!/bin/sh\nexport API_TOKEN=tok3nV4lue9999\nDB_PASSWORD=hunter2hunter3\nrun_deploy\n"
+DOTENV_VALUES = ("tok3nV4lue9999", "hunter2hunter3")
+
+
+def _with_deploy_script(repo: Path) -> None:
+    write(repo, "deploy.sh", DEPLOY_SH)
+    write(repo, ".envrc", "export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "add deploy script")
+
+
+def test_regression_dotenv_values_redacted_in_numbered_context(repo: Path, llm: FakeLLM):
+    # The NAME=value rule was anchored at the line start, and context lines start with
+    # `  2| `, so these values went to the provider. .envrc was not a secret file.
+    _with_deploy_script(repo)
+    server = create_server(repo, llm)
+    call_tool(server, "scholar_explain", {"file_path": "deploy.sh", "question": "how?"})
+    assert "export API_TOKEN=[REDACTED]" in llm.last
+    call_tool(server, "debug_error_in_context", {"error_message": "deploy failed"})
+    for prompt in llm.prompts:
+        for value in (*DOTENV_VALUES, "wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY"):
+            assert value not in prompt
+    hits = data_of(call_tool(server, "search_code", {"query": "API_TOKEN DB_PASSWORD deploy"}))
+    text = "".join(hit["text"] for hit in hits["hits"])
+    assert "deploy.sh" in text
+    assert not [v for v in DOTENV_VALUES if v in text]
+
+
+def test_regression_dotenv_values_redacted_in_diff(repo: Path, llm: FakeLLM):
+    _with_deploy_script(repo)
+    write(repo, "deploy.sh", DEPLOY_SH.replace("tok3nV4lue9999", "n3wT0kenValue77"))
+    call_tool(create_server(repo, llm), "explain_last_change")
+    assert "| -export API_TOKEN=[REDACTED]" in llm.last
+    assert "| +export API_TOKEN=[REDACTED]" in llm.last
+    for value in (*DOTENV_VALUES, "n3wT0kenValue77"):
+        assert value not in llm.last
+
+
+def test_regression_excluded_files_left_out_of_diff(repo: Path, llm: FakeLLM):
+    # Values with no secret shape, so only the pathspec excludes can keep them out.
+    write(repo, "config/PROD.ENV", "plain=Sup3rPlainValue\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "add prod env")
+    write(repo, ".env", "plain=dotenvPlainValue\n")
+    write(repo, "config/PROD.ENV", "plain=Sup3rChangedValue\n")
+    write(repo, "package-lock.json", '{"lockfileChangedValue": true}\n')
+    write(repo, "src/calc.py", CALC_PY + "# touched\n")
+    call_tool(create_server(repo, llm), "explain_last_change")
+    assert "# touched" in llm.last
+    for value in ("dotenvPlainValue", "Sup3rPlainValue", "Sup3rChangedValue", "lockfileChanged"):
+        assert value not in llm.last
+
+
 def _overview_prompt(root: Path, llm: FakeLLM) -> str:
     """A broad question with no target file: the context is every file's first chunk."""
     call_tool(create_server(root, llm), "debug_error_in_context", {"error_message": "it broke"})
