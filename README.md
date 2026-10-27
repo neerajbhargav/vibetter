@@ -335,4 +335,4 @@ MIT. See [LICENSE](LICENSE).
 ## Author
 
 Built by [Neeraj Bhargav Rondla](https://neerajbhargav.com), applied AI engineer.
-More MCP and agent tooling: [context-refinery](https://github.com/neerajbhargav/context-refinery).
+Also by him: [context-refinery](https://github.com/neerajbhargav/context-refinery), a parked desktop prototype that packs source files into one token-budgeted prompt.
