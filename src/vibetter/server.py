@@ -170,7 +170,7 @@ class Vibetter:
             self._gather, question, file_path, EXPLAIN_CHARS
         )
         reply = await self.ask_llm(prompts.explain(question, context, file_path))
-        return self._verified(reply, r.files, shown, strict)
+        return await asyncio.to_thread(self._verified, reply, r.files, shown, strict)
 
     @traced("debug_error_in_context")
     async def debug(
@@ -180,16 +180,18 @@ class Vibetter:
             self._gather, error_message, file_path, DEBUG_CHARS
         )
         reply = await self.ask_llm(prompts.debug(error_message, context, file_path))
-        return self._verified(reply, r.files, shown, strict)
+        return await asyncio.to_thread(self._verified, reply, r.files, shown, strict)
 
     @traced("explain_last_change")
     async def explain_changes(self, strict: bool | None = None) -> Answer:
         index = await asyncio.to_thread(self.index)
         label, diff = await asyncio.to_thread(collect_changes, index.root, DIFF_CHARS)
-        numbered = number_lines(diff)
+        numbered, shown = number_lines(diff), shown_spans(diff)
         trace.note(context_chars=len(numbered))
         reply = await self.ask_llm(prompts.explain_diff(label, numbered))
-        return self._verified(reply, index.files, shown_spans(diff), strict)
+        # The diff is read from git now, and the watcher may not have caught up yet.
+        await asyncio.to_thread(index.refresh, shown)
+        return await asyncio.to_thread(self._verified, reply, index.files, shown, strict)
 
     @traced("search_code")
     async def search(
@@ -218,7 +220,7 @@ class Vibetter:
     @traced("verify_citations")
     async def verify(self, text: str, strict: bool | None = None) -> Answer:
         index = await asyncio.to_thread(self.index)
-        return self._verified(text, index.files, None, strict)
+        return await asyncio.to_thread(self._verified, text, index.files, None, strict)
 
     @traced("generate_blueprint")
     async def make_blueprint(self, labels: bool = False) -> dict[str, Any]:

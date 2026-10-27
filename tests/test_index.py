@@ -60,6 +60,17 @@ def test_regression_secret_files_excluded_by_default(repo: Path):
         assert index.skipped[secret] == "secret"
 
 
+def test_regression_symlink_outside_root_is_skipped(repo: Path, tmp_path: Path):
+    outside = tmp_path / "outside.py"
+    outside.write_text("OUTSIDE_THE_REPO = 1\n")
+    (repo / "src/link.py").symlink_to(outside)
+    (repo / "src/inside.py").symlink_to(repo / "src/calc.py")
+    index = built(repo)
+    assert "src/link.py" not in index.files
+    assert index.skipped["src/link.py"] == "outside root"
+    assert "src/inside.py" in index.files
+
+
 def test_walk_fallback_honors_gitignore(plain_dir: Path):
     write(plain_dir, "pkg/.gitignore", "generated.py\n")
     write(plain_dir, "pkg/generated.py", "AUTO = 1\n")

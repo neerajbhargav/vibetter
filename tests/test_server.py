@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from conftest import (
     CALC_PY,
+    UTIL_PY,
     FakeLLM,
     call_tool,
     data_of,
@@ -393,6 +394,21 @@ def test_regression_trailing_save_not_dropped(repo: Path, llm: FakeLLM, watched)
     assert wait_until(lambda: "# third save" in _explain_prompt(server, llm))
 
 
+def test_regression_last_change_checked_against_fresh_files(repo: Path, watched):
+    # An agent writes files and asks at once. The diff comes from git, but the
+    # citations were checked against the watcher's index, which had not caught up.
+    llm = FakeLLM("It adds retry() at src/new.py:L1-L3 and EXTRA at src/util.py:L4.")
+    server = watched(llm)
+    call_tool(server, "search_code", {"query": "clamp"})  # index built, watcher running
+    write(repo, "src/new.py", "def retry():\n    pass\n    return 1\n")
+    write(repo, "src/util.py", UTIL_PY + "\nEXTRA = 1\n")
+    data = data_of(call_tool(server, "explain_last_change", {"strict": True}))
+    assert [(c["path"], c["valid"], c["grounded"]) for c in data["citations"]] == [
+        ("src/new.py", True, True),
+        ("src/util.py", True, True),
+    ]
+
+
 def _graph_nodes(server) -> set[str]:
     return {n["id"] for n in data_of(call_tool(server, "generate_blueprint"))["nodes"]}
 
@@ -506,6 +522,27 @@ def test_search_code_needs_no_model(shop: Path, llm: FakeLLM):
     assert top["text"].startswith(f"--- shop/cart.py:L{top['start']}-L{top['end']} ---\n")
     assert re.search(r"^\s*\d+\| ", top["text"], re.MULTILINE)
     assert data["stats"]["chunks_retrieved"] == len(data["hits"])
+
+
+def test_search_code_limit_is_clamped(tmp_path: Path, llm: FakeLLM):
+    for i in range(60):
+        write(tmp_path, f"m{i:02}.py", f"def f{i}():\n    return 'needle'\n")
+    server = create_server(tmp_path, llm)
+
+    def hits(limit: int) -> int:
+        args = {"query": "needle", "limit": limit}
+        return len(data_of(call_tool(server, "search_code", args))["hits"])
+
+    assert hits(0) == 1
+    assert hits(1000) == 50
+
+
+def test_regression_blueprint_escapes_script_close_in_paths(shop: Path, llm: FakeLLM):
+    # A repo path goes into an inline <script>; "</script>" in it would end the script.
+    write(shop, "web/src/x</script><img src=x onerror=alert(1)>.js", "import '../lib/api.js'\n")
+    html = read_resource(create_server(shop, llm), "ui://blueprint")
+    assert "x<\\/script><img" in html
+    assert "</script><img" not in html
 
 
 def test_search_code_within_a_file(shop: Path, llm: FakeLLM):

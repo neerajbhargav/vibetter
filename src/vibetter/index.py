@@ -20,6 +20,7 @@ import subprocess
 import threading
 import time
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -335,6 +336,12 @@ class CodebaseIndex(FileSystemEventHandler):
             self._timer = threading.Timer(delay, self.flush)
             self._timer.daemon = True
             self._timer.start()
+
+    def refresh(self, rels: Iterable[str]) -> None:
+        """Re-read these files now, without waiting for the watcher."""
+        with self._pending_lock:
+            self._pending.update(rels)
+        self.flush()
 
     def flush(self) -> None:
         """Apply pending events now. The debounce timer calls this."""
