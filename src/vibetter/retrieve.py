@@ -5,7 +5,8 @@ Three ranked arms, fused by reciprocal rank fusion (RRF, k=60):
   are split; the whole identifier is kept as well),
 - a symbol and path index (definitions from `ast` for Python and from
   regexes for JS, TS and Vue; file names; file:line references such as
-  traceback frames), matched only by identifiers written as code,
+  traceback frames), matched only by identifiers written as code. A chunk at
+  a file:line the query names is ranked first,
 - optionally a dense arm (`pip install 'vibetter[dense]'`: fastembed with
   BAAI/bge-small-en-v1.5).
 
@@ -268,13 +269,20 @@ class Retriever:
             if stem in words or path.lower() in lowered:
                 for i in ids:
                     scores[i] += 2.0
-        for ref in cite.parse(query):  # traceback frames, path:line mentions
+        for i in self._named(query):
+            scores[i] += 5.0
+        return scores
+
+    def _named(self, query: str) -> set[int]:
+        """Chunks at a file:line the query names, such as a traceback frame."""
+        named: set[int] = set()
+        for ref in cite.parse(query):
             path, _ = cite.resolve(ref.path, self.files)
             for i in self.by_path.get(path or "", ()):
                 c = self.chunks[i]
                 if c.start <= ref.end and ref.start <= c.end:
-                    scores[i] += 5.0
-        return scores
+                    named.add(i)
+        return named
 
     def _dense_scores(self, query: str) -> dict[int, float]:
         if self.embedder is None or not self.chunks:
@@ -303,6 +311,10 @@ class Retriever:
             for i in ranking:
                 which[i].append(name)
         order = sorted(fused, key=lambda i: (-fused[i], i))
+        # A line the query names is the strongest signal, so it goes first, not just
+        # one rank up: in a fused ranking, BM25 alone can outvote it.
+        named = self._named(query)
+        order = [i for i in order if i in named] + [i for i in order if i not in named]
         if within is not None:
             mine = set(self.by_path.get(within, ()))
             order = [i for i in order if i in mine]

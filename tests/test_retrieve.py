@@ -83,6 +83,17 @@ def test_traceback_frame_steers_retrieval(shop: Path):
     assert top.path == "shop/cart.py" and top.start <= line <= top.end
 
 
+def test_regression_traceback_frame_alone_picks_the_chunk(shop: Path):
+    # Only the frame names the place: no function name and no words from that code.
+    r = retriever(shop)
+    line = line_of(shop, "shop/report.py", "def ledger_balance")
+    first = r.chunks[r.by_path["shop/report.py"][0]]
+    assert line > first.end  # a later chunk, so file order alone cannot pass
+    error = f'File "/srv/app/shop/report.py", line {line}\nKeyError: 7'
+    top = r.search(error, limit=1)[0].chunk
+    assert top.path == "shop/report.py" and top.start <= line <= top.end
+
+
 def test_file_path_in_query(shop: Path):
     assert retriever(shop).search("what is shop/legacy.py for", limit=1)[0].chunk.path == (
         "shop/legacy.py"
