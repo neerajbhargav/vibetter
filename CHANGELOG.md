@@ -28,8 +28,9 @@ and their caveats are in [eval/README.md](eval/README.md).
   files that are never read.
 - JSONL traces per tool call, with optional OpenTelemetry export (`vibetter[otel]`).
 - An offline test suite (fake LLM, in-memory MCP client, synthetic fixture repo) and CI: ruff,
-  pyright, pytest on Python 3.10 to 3.13, the wheel build, the frontend build check and
-  installer syntax checks.
+  pyright, pytest on Python 3.10 to 3.14 on Ubuntu and 3.13 on macOS, the wheel build, the
+  frontend build check, an installer smoke test (`install.sh` twice in a throwaway HOME on
+  Ubuntu and macOS) and a parse of `install.ps1`.
 - A public eval: 66 questions with gold line spans over click 8.5.0, requests v2.34.2 and
   ky v2.2.0. The retrieval eval runs in CI as a recall gate against a committed baseline; the
   answer eval runs locally on Ollama, 3 runs per arm, and `--rescore` scores its committed
