@@ -386,7 +386,8 @@ def test_last_change_with_no_line_change_is_tool_error(repo: Path, llm: FakeLLM)
 
 
 @pytest.mark.parametrize(
-    "config", [("diff.mnemonicPrefix", "true"), ("diff.noprefix", "true"), ("core.quotePath", "true")]
+    "config",
+    [("diff.mnemonicPrefix", "true"), ("diff.noprefix", "true"), ("core.quotePath", "true")],
 )
 def test_regression_diff_paths_ignore_user_git_config(repo: Path, config: tuple[str, str]):
     # With mnemonicPrefix the diff said `+++ w/src/calc.py`, so every citation of it
