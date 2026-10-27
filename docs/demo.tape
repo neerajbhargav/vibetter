@@ -3,13 +3,14 @@
 # Run from the repo root: vhs docs/demo.tape
 # Nothing is cut or edited: the recording waits in real time for the model, and the last
 # line of output is the wall time of the command. The model's answer differs between runs.
+# The size keeps the text readable at the width GitHub shows a README image.
 
 Output docs/demo.gif
 
 Set Shell "bash"
-Set FontSize 15
-Set Width 1280
-Set Height 900
+Set FontSize 18
+Set Width 1100
+Set Height 600
 Set Padding 24
 Set Theme "Catppuccin Mocha"
 Set TypingSpeed 30ms
@@ -32,5 +33,5 @@ Sleep 600ms
 Type `time vibetter ask "How does ky tell a network error from other errors?" --file source/utils/is-network-error.ts`
 Sleep 800ms
 Enter
-Wait+Screen /wall time/
+Wait+Line /^\$\s*$/
 Sleep 10s
