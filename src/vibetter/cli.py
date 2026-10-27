@@ -11,7 +11,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import re
+import shutil
 import sys
+import textwrap
 import threading
 
 from . import __version__
@@ -65,13 +68,42 @@ def serve() -> None:
     build_mcp(app).run(show_banner=False)
 
 
+def _wrap(text: str) -> str:
+    """Fit prose to the terminal, never splitting a word (or a citation) or touching code."""
+    if not sys.stdout.isatty():
+        return text
+    width = shutil.get_terminal_size().columns
+    out, fenced = [], False
+    for line in text.splitlines():
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            out.append(line)
+            continue
+        if fenced or len(line) <= width:
+            out.append(line)
+            continue
+        lead = re.match(r"\s*(?:[-*+] |\d+\. )?", line)
+        indent = " " * len(lead.group() if lead else "")
+        out.append(
+            textwrap.fill(
+                line,
+                width,
+                subsequent_indent=indent,
+                break_long_words=False,
+                break_on_hyphens=False,
+            )
+        )
+    return "\n".join(out)
+
+
 def _print_citations(answer) -> None:
     counts = answer.stats.get("citations", {})
     grounded = any(c.grounded is not None for c in answer.citations)
-    print(
-        f"\ncitations: {counts.get('total', 0)} found, {counts.get('valid', 0)} valid"
-        + (f", {counts.get('grounded', 0)} grounded" if grounded else "")
+    total = counts.get("total", 0)
+    detail = f"{counts.get('valid', 0)} valid" + (
+        f", {counts.get('grounded', 0)} grounded" if grounded else ""
     )
+    print(f"\ncitations: {total} found, {total - counts.get('unverified', 0)} verified ({detail})")
     for c in answer.citations:
         mark = "ok" if c.verified else "!!"
         line = f"L{c.start}" if c.start == c.end else f"L{c.start}-L{c.end}"
@@ -88,10 +120,10 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         from .server import Vibetter
 
-        app = Vibetter(args.root)
+        app = Vibetter(args.root, progress=lambda line: print(line, file=sys.stderr, flush=True))
         if args.command == "ask":
             answer = asyncio.run(app.explain(args.question, args.file, args.strict or None))
-            print(answer.answer)
+            print(_wrap(answer.answer))
             _print_citations(answer)
         elif args.command == "search":
             result = asyncio.run(app.search(args.query, args.limit, args.file))

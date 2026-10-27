@@ -84,8 +84,9 @@ sequenceDiagram
    context and again after it, because small local models drop instructions that come before
    a long context. Its examples use placeholders (`path:L<first>-L<last>`), because
    qwen2.5-coder:7b copied a numeric example word for word, and a copied range of real lines
-   passes the check. For Ollama, the request sets `num_ctx` to fit the prompt (8k to 32k
-   tokens); without it, Ollama silently drops the start of a long prompt.
+   passes the check. For Ollama, the request sets `num_ctx` to the smallest of 8k, 16k or
+   32k tokens that fits the prompt; without it, Ollama silently drops the start of a long
+   prompt. Fixed sizes matter because Ollama reloads the model whenever `num_ctx` changes.
 7. **Verification.** `cite.check` parses every citation in the reply and checks it against the
    indexed files and the shown spans. No model is involved. The result is an `Answer`: the
    reply text (or the strict-mode text), one `CitationCheck` per distinct cited span, and the

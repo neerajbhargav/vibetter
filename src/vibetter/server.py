@@ -98,8 +98,10 @@ class Vibetter:
         watch: bool = False,
         debounce: float = 0.3,
         embedder: Embedder | bool = True,
+        progress: Callable[[str], None] | None = None,
     ):
         self._root = root
+        self._progress = progress
         self._llm = llm
         self._watch = watch
         self._debounce = debounce
@@ -147,6 +149,11 @@ class Vibetter:
             chunks_in_context=used,
             context_chars=len(context),
         )
+        if self._progress is not None:
+            self._progress(
+                f"context: {used} chunks, {len(context):,} characters from {len(shown)} files;"
+                " asking the model"
+            )
         return r, context, shown
 
     async def ask_llm(self, prompt: str, json_mode: bool = False) -> str:

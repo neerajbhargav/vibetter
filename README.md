@@ -74,7 +74,7 @@ The search prints the best chunk, `--- shop/cart.py:L1-L31 ---`, with numbered l
 verify command prints the following and exits with status 2, because one citation failed:
 
 ```
-citations: 2 found, 1 valid
+citations: 2 found, 1 verified (1 valid)
   ok shop/cart.py:L24-L25
   !! shop/coupons.py:L12  (file not indexed)
 ```

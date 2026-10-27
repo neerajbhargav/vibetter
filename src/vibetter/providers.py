@@ -38,6 +38,7 @@ DEFAULT_MODELS: dict[str, tuple[str, ...]] = {
 KEY_ENV = {"gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "anthropic": "ANTHROPIC_API_KEY"}
 SDK = {"gemini": "google-genai", "openai": "openai", "anthropic": "anthropic", "ollama": "ollama"}
 MAX_OUTPUT_TOKENS = 8192
+NUM_CTX_SIZES = (8_192, 16_384, 32_768)
 JSON_ONLY = "Respond with valid JSON only. No markdown fences and no text outside the JSON."
 
 Kind = Literal["transient", "missing", "fatal"]
@@ -173,7 +174,8 @@ def ollama_num_ctx(prompt: str) -> int:
         return int(override)
     # ponytail: ~3 characters per token for code; use the model's tokenizer if this misfits.
     needed = len(prompt) // 3 + MAX_OUTPUT_TOKENS // 2
-    return min(32_768, max(8_192, -(-needed // 1024) * 1024))
+    # A few fixed sizes: Ollama reloads the model whenever num_ctx changes (about 1 s).
+    return next((size for size in NUM_CTX_SIZES if size >= needed), NUM_CTX_SIZES[-1])
 
 
 def _ollama(client: Any, model: str, prompt: str, json_mode: bool) -> str:

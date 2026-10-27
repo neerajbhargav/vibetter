@@ -198,5 +198,7 @@ def test_regression_ollama_window_fits_the_prompt(monkeypatch: pytest.MonkeyPatc
     num_ctx = client.kwargs[0]["options"]["num_ctx"]
     assert num_ctx >= len(prompt) // 4
     assert providers.ollama_num_ctx("short") == 8192
+    # Each new num_ctx reloads the model, so nearby prompt sizes share one value.
+    assert providers.ollama_num_ctx("x" * 20_000) == providers.ollama_num_ctx("x" * 30_000) == 16384
     monkeypatch.setenv("VIBETTER_OLLAMA_NUM_CTX", "4096")
     assert providers.ollama_num_ctx(prompt) == 4096
