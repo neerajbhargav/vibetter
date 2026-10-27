@@ -353,6 +353,58 @@ def test_regression_secret_file_changes_not_in_diff(repo: Path, llm: FakeLLM):
     assert "sk-test-changed-secret" not in llm.last
 
 
+def _commit(repo: Path, message: str) -> None:
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", message)
+
+
+def test_regression_merge_commit_shows_what_it_brought_in(repo: Path, llm: FakeLLM):
+    # Right after merging a PR, `git show HEAD` printed no diff for the merge.
+    git(repo, "checkout", "-q", "-b", "feat")
+    write(repo, "src/util.py", UTIL_PY + "\n\ndef feature_flag():\n    return True\n")
+    _commit(repo, "feat")
+    git(repo, "checkout", "-q", "main")
+    write(repo, "README.md", "# Demo\n\nA tiny calculator, now documented.\n")
+    _commit(repo, "docs")
+    git(repo, "merge", "-q", "--no-ff", "-m", "Merge feat", "feat")
+    line = line_of(repo, "src/util.py", "def feature_flag")
+    llm.reply = f"It adds feature_flag at src/util.py:L{line}."
+    data = data_of(call_tool(create_server(repo, llm), "explain_last_change"))
+    assert "Merge feat" in llm.last
+    assert re.search(rf"^\s*{line}\| \+def feature_flag", llm.last, re.MULTILINE)
+    assert "now documented" not in llm.last  # the first parent already had it
+    assert data["citations"][0]["grounded"] is True
+
+
+def test_last_change_with_no_line_change_is_tool_error(repo: Path, llm: FakeLLM):
+    git(repo, "mv", "src/util.py", "src/helpers.py")
+    _commit(repo, "rename only")
+    result = call_tool(create_server(repo, llm), "explain_last_change")
+    assert result.is_error
+    assert "no line change" in text_of(result)
+    assert llm.prompts == []
+
+
+@pytest.mark.parametrize(
+    "config", [("diff.mnemonicPrefix", "true"), ("diff.noprefix", "true"), ("core.quotePath", "true")]
+)
+def test_regression_diff_paths_ignore_user_git_config(repo: Path, config: tuple[str, str]):
+    # With mnemonicPrefix the diff said `+++ w/src/calc.py`, so every citation of it
+    # failed as "not in the context shown", and strict mode deleted all of them.
+    git(repo, "config", *config)
+    write(repo, "src/caf\u00e9.py", "x = 1\n")
+    _commit(repo, "a file with a non-ASCII name")
+    write(repo, "src/caf\u00e9.py", "x = 2\n")
+    write(repo, "src/calc.py", CALC_PY + "\n\ndef triple(x):\n    return 3 * x\n")
+    line = line_of(repo, "src/calc.py", "return 3 * x")
+    llm = FakeLLM(f"triple at src/calc.py:L{line}, x at src/caf\u00e9.py:L1.")
+    data = data_of(call_tool(create_server(repo, llm), "explain_last_change", {"strict": True}))
+    assert [(c["path"], c["grounded"]) for c in data["citations"]] == [
+        ("src/calc.py", True),
+        ("src/caf\u00e9.py", True),
+    ]
+
+
 def test_last_change_outside_git_is_tool_error(plain_dir: Path, llm: FakeLLM):
     result = call_tool(create_server(plain_dir, llm), "explain_last_change")
     assert result.is_error

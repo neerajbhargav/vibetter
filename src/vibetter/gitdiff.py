@@ -5,13 +5,14 @@ Order of preference:
    index and worktree before the first commit) plus untracked files, which
    is what an AI agent usually creates.
 2. Otherwise the last commit (`git show HEAD`), which also works for the
-   root commit.
+   root commit. A merge commit shows its changes against the first parent.
 
 Secret files, lockfiles and minified files are left out of the diff.
 """
 
 from __future__ import annotations
 
+import codecs
 import re
 import shutil
 import subprocess
@@ -35,10 +36,20 @@ _EXCLUDES = [
     for g in (*SECRET_FILE_GLOBS, *sorted(LOCKFILES), "*.min.js", "*.min.css")
 ]
 _PATHSPEC = ["--", ".", *_EXCLUDES]
+_DIFF_FLAGS = [
+    "--relative",
+    "--no-color",
+    "--no-ext-diff",
+    "--no-textconv",
+    "--src-prefix=a/",
+    "--dst-prefix=b/",
+]
 
 
 def _git(root: Path, *args: str) -> str:
-    out = subprocess.run(["git", *args], cwd=root, capture_output=True, check=False)
+    # Raw UTF-8 paths, whatever the user's config says (cafe.py, not "caf\303\251.py").
+    cmd = ["git", "-c", "core.quotePath=false", *args]
+    out = subprocess.run(cmd, cwd=root, capture_output=True, check=False)
     if out.returncode != 0:
         stderr = out.stderr.decode("utf-8", errors="replace").strip()
         raise GitError(f"git {args[0]} failed: {stderr}")
@@ -79,7 +90,9 @@ def collect_changes(root: Path, max_chars: int = 40_000) -> tuple[str, str]:
         ).returncode
         == 0
     )
-    diff_args = ["diff", "--relative", "--no-color", "--no-ext-diff"]
+    # Fixed a/ b/ prefixes (diff.mnemonicPrefix and diff.noprefix change them) and no
+    # textconv drivers, so the paths and lines are the files' own.
+    diff_args = ["diff", *_DIFF_FLAGS]
     if has_head:
         tracked = _git(root, *diff_args, "HEAD", *_PATHSPEC)
     else:
@@ -99,12 +112,13 @@ def collect_changes(root: Path, max_chars: int = 40_000) -> tuple[str, str]:
         label += f", plus {len(untracked)} untracked file(s))" if untracked else ")"
         diff = tracked + new_files
     elif has_head:
+        # A merge shows what it brought in against its first parent; plain `git show`
+        # prints no diff for a clean merge, and `diff --cc` for an evil one.
         diff = _git(
             root,
             "show",
-            "--relative",
-            "--no-color",
-            "--no-ext-diff",
+            *_DIFF_FLAGS,
+            "--diff-merges=first-parent",
             "--format=commit %h%nSubject: %s%n",
             "HEAD",
             *_PATHSPEC,
@@ -114,6 +128,11 @@ def collect_changes(root: Path, max_chars: int = 40_000) -> tuple[str, str]:
     else:
         raise GitError("This repository has no commits and no changes yet.")
 
+    if not re.search(r"(?m)^@@ ", diff):
+        raise GitError(
+            f"There is no line change to explain in {label}: it only renames, deletes binary"
+            " files or touches files that are left out (secrets, lockfiles, minified files)."
+        )
     return label, fit(diff, max_chars)
 
 
@@ -137,6 +156,13 @@ def fit(diff: str, max_chars: int) -> str:
         out.append(section)
         used += len(section)
     return "".join(out)
+
+
+def _unquote(path: str) -> str:
+    """Undo git's C-style quoting of a path with special characters ("b/a\tb.py")."""
+    if len(path) < 2 or not (path.startswith('"') and path.endswith('"')):
+        return path
+    return codecs.escape_decode(path[1:-1].encode("utf-8"))[0].decode("utf-8", "replace")
 
 
 _HUNK = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
@@ -171,7 +197,7 @@ def _hunks(diff: str) -> Iterator[tuple[str | None, str, str, int | None]]:
             number = int(m.group(2))
             new_left = int(m.group(3)) if m.group(3) is not None else 1
         elif line.startswith("+++ ") and previous.startswith("--- "):
-            target = line[4:].strip()
+            target = _unquote(line[4:].strip())
             path = None if target == "/dev/null" else target.removeprefix("b/")
         previous = line
         yield path, line, "header", None
