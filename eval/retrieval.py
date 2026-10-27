@@ -28,6 +28,7 @@ from vibetter.retrieve import (
     fastembed_embedder,
     tokenize,
 )
+from vibetter.server import Vibetter
 
 from .common import (
     EVAL_DIR,
@@ -45,9 +46,11 @@ from .common import (
     mean,
     v1_context,
     v1_files,
+    v1_targeted_context,
 )
 
 BUDGETS = (24_000, 60_000)
+V1_TARGET_CHARS = 40_000  # v1's get_targeted_context() default
 ARMS = {
     "A": "v1: walk order, first N characters, no line numbers",
     "B": "BM25 over line-aware chunks",
@@ -139,6 +142,65 @@ def run_repo(
                     }
                 )
     return rows
+
+
+FILE_ARMS = {
+    "A+file": "v1 scholar_explain: the target file whole, then whole files in walk order"
+    " up to 40,000 characters",
+    "C+file": "v2 scholar_explain: the target file's chunks first, then ranked chunks",
+}
+
+
+def file_given(budgets: Sequence[int] = (24_000, 40_000)) -> dict:
+    """Recall when the question comes with its file, as scholar_explain requires.
+
+    The file is the question's first gold file, so this is an oracle: it shows what
+    each version does with the right file, not how often a user picks it.
+    """
+    vibetter_root = EVAL_DIR.parent
+    commit, dirty = git_head(vibetter_root), git_dirty(vibetter_root)  # read before the run
+    roots, questions = checkouts(), load_questions()
+    rows: list[dict[str, Any]] = []
+    for repo in load_repos():
+        root = roots[repo["name"]]
+        old, app = v1_files(root), Vibetter(root, embedder=False)
+        for q in (x for x in questions if x.repo == repo["name"]):
+            target = q.gold[0].path
+            runs = [("A+file", V1_TARGET_CHARS, v1_targeted_context(old, target)[1])]
+            runs += [("C+file", b, app._gather(q.question, target, b)[2]) for b in budgets]
+            for arm, budget, shown in runs:
+                recall = round(gold_recall(q, shown), 6)
+                rows.append(
+                    {"id": q.id, "repo": q.repo, "arm": arm, "budget": budget, "recall": recall}
+                )
+    summary: dict[str, Any] = {}
+    for arm, budget in dict.fromkeys((r["arm"], r["budget"]) for r in rows):
+        mine = [r["recall"] for r in rows if r["arm"] == arm and r["budget"] == budget]
+        ci = bootstrap(len(mine), lambda ix, xs=mine: mean([xs[i] for i in ix]))
+        summary[f"{arm}@{budget}"] = {
+            "n": len(mine),
+            "recall": round(mean(mine), 4),
+            "recall_ci95": [round(x, 4) for x in ci],
+            "any_gold_in_context": round(mean([x > 0 for x in mine]), 4),
+        }
+    return {
+        "eval": "retrieval-file-given",
+        "vibetter_commit": commit,
+        "vibetter_dirty": dirty,
+        "python": platform.python_version(),
+        "repos": load_repos(),
+        "questions": len(questions),
+        "target": "the question's first gold file (an oracle choice)",
+        "arms": FILE_ARMS,
+        "budgets_chars": {"A+file": V1_TARGET_CHARS, "C+file": list(budgets)},
+        "metrics": {
+            "recall": "share of gold lines that appear complete in the context",
+            "any_gold_in_context": "share of questions with at least one gold line shown",
+            "ci95": "percentile bootstrap over questions, 10,000 resamples, seed 0",
+        },
+        "summary": summary,
+        "rows": rows,
+    }
 
 
 def _stats(rows: list[dict[str, Any]]) -> dict[str, Any]:

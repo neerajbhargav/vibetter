@@ -9,7 +9,7 @@ import json
 import os
 import random
 import subprocess
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -163,6 +163,30 @@ def v1_context(files: Sequence[tuple[str, str]], budget: int) -> tuple[str, dict
     return context, shown
 
 
+def v1_targeted_context(
+    files: Sequence[tuple[str, str]], target: str, max_chars: int = 40_000
+) -> tuple[str, dict[str, list[Span]]]:
+    """v1's get_targeted_context(): what v1's scholar_explain showed for a file.
+
+    The target file whole, then other files in walk order while each fits whole in
+    max_chars; the first file that does not fit ends the context.
+    """
+    text = dict(files)
+    parts = [f"--- TARGET FILE: {target} ---\n{text[target]}\n"]
+    shown = {target: [(1, len(split_lines(text[target])))]}
+    budget = max_chars - len(parts[0])
+    for rel, content in files:
+        if rel == target:
+            continue
+        part = f"--- FILE: {rel} ---\n{content}\n"
+        if budget - len(part) < 0:
+            break
+        parts.append(part)
+        shown[rel] = [(1, len(split_lines(content)))]
+        budget -= len(part)
+    return "\n".join(parts), shown
+
+
 # --- metrics ---------------------------------------------------------------------------
 
 
@@ -171,7 +195,7 @@ def overlap(spans: Sequence[Span], start: int, end: int) -> int:
     return sum(max(0, min(e, end) - max(s, start) + 1) for s, e in spans)
 
 
-def gold_recall(q: Question, shown: dict[str, list[Span]]) -> float:
+def gold_recall(q: Question, shown: Mapping[str, Sequence[Span]]) -> float:
     """Fraction of the question's gold lines that the context shows."""
     total = sum(g.end - g.start + 1 for g in q.gold)
     hit = sum(overlap(shown.get(g.path, []), g.start, g.end) for g in q.gold)

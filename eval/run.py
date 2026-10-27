@@ -3,6 +3,8 @@
 uv run python -m eval.run --retrieval           all arms; writes results/retrieval-<date>.json
 uv run python -m eval.run --retrieval --gate    arms A-C; fails if arm C recall drops (CI)
 uv run python -m eval.run --retrieval --set-baseline   also rewrites the committed baseline
+uv run python -m eval.run --retrieval --file-given     the question's file given, v1 and v2;
+                                                writes results/retrieval-file-given-<date>.json
 uv run python -m eval.run --llm                 local Ollama, 3 runs; writes results/llm-<date>.json
 uv run python -m eval.run --llm --rescore eval/results/llm-2026-10-23.json
                                                 no model call: scores the committed replies
@@ -35,6 +37,7 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--llm", action="store_true", help="model-backed eval with local Ollama")
     p.add_argument("--gate", action="store_true", help="fail if arm C recall drops (no file)")
     p.add_argument("--set-baseline", action="store_true", help="rewrite the retrieval baseline")
+    p.add_argument("--file-given", action="store_true", help="give each question its gold file")
     p.add_argument("--arms", default=None, help="comma-separated arms, for example A,B,C")
     p.add_argument("--runs", type=int, default=3, help="LLM runs per arm (default 3)")
     p.add_argument("--limit", type=int, default=None, help="LLM: first N questions per repo")
@@ -60,6 +63,16 @@ def main(argv: list[str] | None = None) -> int:
 
     from . import retrieval
 
+    if args.file_given:
+        result = retrieval.file_given()
+        for name, s in result["summary"].items():
+            lo, hi = s["recall_ci95"]
+            print(
+                f"{name:<14} recall {s['recall']:.3f} [{lo:.3f}, {hi:.3f}]  any gold "
+                f"{s['any_gold_in_context']:.3f}"
+            )
+        write(result, args.out or f"retrieval-file-given-{today}.json")
+        return 0
     arms = args.arms.split(",") if args.arms else (["A", "B", "C"] if args.gate else None)
     result = retrieval.run(arms) if arms else retrieval.run()
     print(retrieval.table(result))

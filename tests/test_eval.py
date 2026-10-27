@@ -6,7 +6,7 @@ from pathlib import Path
 
 from conftest import line_of
 
-from eval.common import Gold, Question, gold_recall, v1_context, v1_files
+from eval.common import Gold, Question, gold_recall, v1_context, v1_files, v1_targeted_context
 from eval.retrieval import first_gold_rank, ranked_context
 from vibetter.index import CodebaseIndex
 from vibetter.retrieve import Retriever
@@ -25,6 +25,16 @@ def test_v1_context_cuts_at_the_budget_and_reports_only_complete_lines(shop: Pat
         assert start == 1
         body = "\n".join(text[path].split("\n")[:end])
         assert f"--- FILE: {path} ---\n{body}" in context
+
+
+def test_v1_targeted_context_puts_the_file_first_and_stops_at_the_first_misfit(shop: Path):
+    files = v1_files(shop)
+    context, shown = v1_targeted_context(files, "shop/report.py", 6_000)
+    assert context.startswith("--- TARGET FILE: shop/report.py ---\n")
+    assert shown["shop/report.py"] == [(1, len((shop / "shop/report.py").read_text().splitlines()))]
+    rest = [p for p, _ in files if p != "shop/report.py"]
+    taken = [p for p in rest if p in shown]
+    assert taken == rest[: len(taken)]  # walk order, no gaps
 
 
 def test_metrics_count_gold_lines_and_rank():
