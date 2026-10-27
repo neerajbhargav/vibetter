@@ -3,11 +3,17 @@
 The prompts ask for `path:L<first>-L<last>`, such as `path:L12-L20` (or
 `path:L12`). The parser also accepts the variants models write anyway:
 `path:12-20`, `path#L12-L20`, `path:12:5`, `path, lines 12-20`,
-`path (line 12)` and traceback `File "path", line 12`.
+`path (line 12)`, `path at line 12`, `path:path/x.py:L12`, `lines 12-20 of path`
+and traceback `File "path", line 12`.
+
+A path starts at a token boundary (start of text, whitespace, a quote or
+backtick, `(`, `[` and similar), may start with a dot (`.github/ci.yml`) and
+may hold `[slug]` and `(group)` segments. It never starts inside a word, so
+`app/shop/[id]/page.tsx` is not read as `/page.tsx`, and the scan stays linear.
 
 A citation is
 - valid when the file is indexed and the lines exist,
-- grounded when the range overlaps context the model was actually shown,
+- grounded when every cited line was in the context the model was shown,
 - quote-matched when a code quote placed right after it (`path:L7 `code``)
   appears in the cited lines.
 No LLM is involved; every check is a lookup.
@@ -15,10 +21,11 @@ No LLM is involved; every check is a lookup.
 
 from __future__ import annotations
 
+import bisect
 import os
 import posixpath
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -27,20 +34,34 @@ from .chunk import split_lines
 
 Spans = Mapping[str, list[tuple[int, int]]]
 
-_PATH = r"/?(?:\.{1,2}/)?[\w@~+-][\w.@~+-]*(?:[/\\][\w.@~+-]+)*"
+# Path characters: word characters, combining marks (NFD names) and .@~+-. A segment may
+# also hold a whole [slug] or (group). A match may start only after a boundary, and no two
+# adjacent repeats can trade characters, so a failed match costs time linear in the text.
+_CH = r"[\w\u0300-\u036f.@~+-]"
+_SEG = rf"(?:{_CH}|\[{_CH}+\]|\({_CH}+\))+"
+_PATH = rf"/?{_SEG}(?:[/\\]{_SEG})*"
+# A path starts at the start of the text or after one of these, never inside a word.
+_START = r"(?<![^\s`'\"(\[*<>{,;|])"
 _DASH = r"(?:-|\u2013|\u2014|\.\.)"
+_N = r"[0-9]+"
 # Spaces are allowed before an L-prefixed line ("path L5", "path: L5", "L5 - L8"),
 # never before a bare number, so "main.py 2 times" stays prose.
-_LINE_SEP = r"(?:[:#]|:?[ \t]+(?=L\d))"
-_RANGE_DASH = rf"(?:{_DASH}|[ \t]*{_DASH}[ \t]*(?=L\d))"
+_LINE_SEP = r"(?:[:#]|:?[ \t]+(?=L[0-9]))"
+_RANGE_DASH = rf"(?:{_DASH}|[ \t]*{_DASH}[ \t]*(?=L[0-9]))"
+_WORD_DASH = r"[ \t]*(?:-|\u2013|\u2014|to|through)[ \t]*"
 _REF = re.compile(
-    r'File "(?P<tb_path>[^"\n]+)", line (?P<tb_line>\d+)'
-    rf"|(?P<path>{_PATH})"
-    rf"(?:{_LINE_SEP}L?(?P<start>\d+)(?::\d+)?(?:{_RANGE_DASH}L?(?P<end>\d+)(?::\d+)?)?"
-    r"|[`'\"]?[,:]?[ \t]*\(?[ \t]*lines?[ \t]+(?P<wstart>\d+)"
-    r"(?:[ \t]*(?:-|\u2013|\u2014|to|through)[ \t]*(?P<wend>\d+))?)"
+    rf'File "(?P<tb_path>[^"\n]+)", line (?P<tb_line>{_N})'
+    # lines 12-20 of `path`
+    rf"|{_START}[Ll]ines?[ \t]+(?P<rstart>{_N})(?:{_WORD_DASH}(?P<rend>{_N}))?"
+    rf"[ \t]+(?:of|in)[ \t]+[`'\"]?(?P<rpath>{_PATH})"
+    # path:L12-L20 and its variants; "path:" is a prefix some models add
+    rf"|{_START}(?:path:[ \t]*)?(?P<path>{_PATH})"
+    rf"(?:{_LINE_SEP}L?(?P<start>{_N})(?::{_N})?(?:{_RANGE_DASH}L?(?P<end>{_N})(?::{_N})?)?"
+    rf"|[`'\"]?[,:]?[ \t]*(?:\([ \t]*)?(?:(?:at|on)[ \t]+)?[Ll]ines?[ \t]+(?P<wstart>{_N})"
+    rf"(?:{_WORD_DASH}(?P<wend>{_N}))?)"
 )
 _QUOTE = re.compile(r"[ \t]*(?:[:\-\u2013\u2014][ \t]*)?(?:`([^`\n]+)`|\"([^\"\n]+)\")")
+_MIN_QUOTE = 3  # non-space characters; a shorter quote (`...`, `x`) checks nothing
 _NOT_FILES = frozenset({"com", "org", "net", "io", "dev", "ai"})  # host:port, not path:line
 
 
@@ -79,30 +100,44 @@ def _looks_like_path(path: str) -> bool:
     return bool(ext) and ext[0].isalpha() and ext.lower() not in _NOT_FILES
 
 
+def _quote_after(text: str, after: int) -> str | None:
+    q = _QUOTE.match(text, after)
+    if q is None:
+        return None
+    quote = q.group(1) or q.group(2)
+    # The next citation in backticks is not a quote of this one.
+    if _REF.search(quote):
+        return None
+    parts = re.split(r"\.\.\.|\u2026", quote)
+    return quote if max(len("".join(p.split())) for p in parts) >= _MIN_QUOTE else None
+
+
 def parse(text: str) -> list[Ref]:
     refs: list[Ref] = []
-    for m in _REF.finditer(text):
+    pos = 0
+    while (m := _REF.search(text, pos)) is not None:
+        pos = m.end()
+        opened = m.start()
         if m.group("tb_path"):
             path, start, end = m.group("tb_path"), int(m.group("tb_line")), None
         else:
-            path = m.group("path")
-            raw_start = m.group("start") or m.group("wstart")
-            raw_end = m.group("end") or m.group("wend")
-            if not _looks_like_path(path) or text[m.start() - 1 : m.start()] in ("/", ":"):
-                continue  # part of a URL such as https://host/x.py:12
+            path = m.group("path") or m.group("rpath")
+            raw_start = m.group("start") or m.group("wstart") or m.group("rstart")
+            raw_end = m.group("end") or m.group("wend") or m.group("rend")
+            if not _looks_like_path(path):
+                # A word, not a path: "as lines 5-8 of x.py" holds a citation after it.
+                pos = m.end("path") if m.group("path") else pos
+                continue
             start, end = int(raw_start), int(raw_end) if raw_end else None
+            if m.group("rpath"):
+                opened = m.start("rpath")
         after = m.end()
         # Skip the closing mark of a wrapped citation such as `path:12`.
-        if (
-            after < len(text)
-            and text[after] in "`'\""
-            and text[m.start() - 1 : m.start()] == text[after]
-        ):
+        if after < len(text) and text[after] in "`'\"" and text[opened - 1 : opened] == text[after]:
             after += 1
         # A quote may follow the bracket around a citation, as in (path:L12) `code`.
         while after < len(text) and text[after] in ")]":
             after += 1
-        q = _QUOTE.match(text, after)
         refs.append(
             Ref(
                 cited=m.group(0),
@@ -110,7 +145,7 @@ def parse(text: str) -> list[Ref]:
                 start=start,
                 end=end if end is not None else start,
                 offset=(m.start(), after),
-                quote=(q.group(1) or q.group(2)) if q else None,
+                quote=_quote_after(text, after),
             )
         )
     return refs
@@ -166,9 +201,15 @@ def check_ref(
         return result(False, False if shown is not None else None, None, why)
     grounded = None
     if shown is not None:
-        grounded = any(s <= ref.end and ref.start <= e for s, e in shown.get(path, ()))
+        spans = shown.get(path, ())
+        grounded = any(s <= ref.start and ref.end <= e for s, e in spans)
         if not grounded:
-            reason = "lines exist but were not in the context shown to the model"
+            partly = any(s <= ref.end and ref.start <= e for s, e in spans)
+            reason = (
+                "only part of the range was in the context shown to the model"
+                if partly
+                else "lines exist but were not in the context shown to the model"
+            )
     quote_match = None
     if ref.quote:
         cited = _squash("\n".join(lines[ref.start - 1 : ref.end]))
@@ -204,13 +245,21 @@ def counts(checks: list[CitationCheck]) -> dict[str, Any]:
     }
 
 
-def _sentence(text: str, start: int, end: int) -> tuple[int, int]:
-    left = 0
-    for m in re.finditer(r"[.!?](?=\s)|\n", text[:start]):
-        left = m.end()
-    m = re.compile(r"[.!?](?=\s|$)|\n").search(text, end)
-    right = len(text) if m is None else (m.start() if m.group() == "\n" else m.end())
-    return left, right
+def _sentences(text: str) -> Callable[[int, int], tuple[int, int]]:
+    """A lookup of the sentence (or line) around a character range, built in one pass."""
+    marks = list(re.finditer(r"[.!?](?=\s|$)|\n", text))
+    starts, ends = [m.start() for m in marks], [m.end() for m in marks]
+
+    def around(start: int, end: int) -> tuple[int, int]:
+        i = bisect.bisect_right(ends, start) - 1
+        j = bisect.bisect_left(starts, end)
+        left = ends[i] if i >= 0 else 0
+        if j == len(marks):
+            return left, len(text)
+        m = marks[j]
+        return left, m.start() if m.group() == "\n" else m.end()
+
+    return around
 
 
 def strip_unverified(text: str, pairs: list[tuple[Ref, CitationCheck]]) -> str:
@@ -220,7 +269,8 @@ def strip_unverified(text: str, pairs: list[tuple[Ref, CitationCheck]]) -> str:
     bad = [(ref, c) for ref, c in pairs if not c.verified]
     if not bad:
         return text
-    spans = sorted(_sentence(text, *ref.offset) for ref, _ in bad)
+    around = _sentences(text)
+    spans = sorted(around(*ref.offset) for ref, _ in bad)
     out, pos = [], 0
     for left, right in spans:
         if right <= pos:

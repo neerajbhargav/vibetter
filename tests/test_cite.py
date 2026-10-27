@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import pytest
@@ -152,3 +153,99 @@ def test_invented_prefix_is_not_completed_but_foreign_absolute_path_is():
     assert verdict("see backend/src/calc.py:7")["reason"] == "file not indexed"
     v = verdict('File "/srv/other-checkout/src/calc.py", line 7')
     assert v["valid"] and v["path"] == "src/calc.py"
+
+
+# --- path grammar (2026-10-26) ----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # A leading dot was dropped, so dotfiles came back "file not indexed" or unparsed.
+        ("see .github/workflows/ci.yml:L3", (".github/workflows/ci.yml", 3, 3)),
+        ("in `.gitignore:L2`", (".gitignore", 2, 2)),
+        # Next.js segments: the parser stopped at "[" and "(".
+        ("see app/blog/[slug]/page.tsx:L2", ("app/blog/[slug]/page.tsx", 2, 2)),
+        ("(app/(auth)/login/page.tsx:L2)", ("app/(auth)/login/page.tsx", 2, 2)),
+        ("cafe\u0301.py:L1", ("cafe\u0301.py", 1, 1)),  # NFD name with a combining mark
+        # Forms found unchecked in the committed eval replies.
+        ("(path:src/calc.py:L5-L8)", ("src/calc.py", 5, 8)),
+        ("as lines 5-8 of `src/calc.py` show", ("src/calc.py", 5, 8)),
+        ("Lines 5 to 8 in src/calc.py do it", ("src/calc.py", 5, 8)),
+        ("in `calc.py` at line 7", ("calc.py", 7, 7)),
+        ("see src/calc.py on line 7", ("src/calc.py", 7, 7)),
+        # A name with spaces is read from its last word; prose gives no way to tell.
+        ("my file.py:L2", ("file.py", 2, 2)),
+    ],
+)
+def test_regression_path_grammar(text: str, expected: tuple[str, int, int]):
+    assert [(r.path, r.start, r.end) for r in parse(text)] == [expected]
+
+
+def test_regression_path_never_starts_inside_a_word():
+    # "app/shop/[id]/page.tsx" was read as "/page.tsx" and completed to app/page.tsx.
+    files = {"app/page.tsx": "a\nb\n"}
+    (_, c), *_ = check("see app/shop/[id]/page.tsx:L2", files)
+    assert c.path == "app/shop/[id]/page.tsx" and not c.valid
+    assert parse("foo/bar.py:L2")[0].path == "foo/bar.py"
+    assert parse("xbar.py:L2")[0].path == "xbar.py"
+
+
+def test_unicode_digits_are_not_line_numbers():
+    assert parse("src/calc.py:L\u0667 and src/calc.py:L\uff17") == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "a" * 50_000,
+        "(a)" * 16_000,
+        "a." * 25_000,
+        "x.py" + " " * 50_000 + "L",
+        "lines 1" + " " * 50_000,
+        'File "' + "a" * 50_000,
+        "x.py:L1 `a` " * 4_000,
+    ],
+    ids=["word", "groups", "dotted", "spaces", "lines", "traceback", "many"],
+)
+def test_regression_parse_is_linear(text: str):
+    # parse("a" * 40_000) took 57 s and blocked the MCP server's event loop.
+    start = time.perf_counter()
+    pairs = check(text, FILES)
+    strip_unverified(text, pairs)
+    assert time.perf_counter() - start < 0.5
+
+
+# --- quotes and verdicts ---------------------------------------------------------
+
+
+def test_regression_next_citation_is_not_a_quote():
+    # The second citation was read as the first one's quote, which then "did not appear".
+    refs = parse("`src/calc.py:L1` `src/calc.py:L7`")
+    assert [(r.start, r.quote) for r in refs] == [(1, None), (7, None)]
+
+
+def test_trivial_quote_checks_nothing():
+    (_, c), *_ = check("src/calc.py:L7 `...`", FILES)
+    assert c.quote_match is None
+
+
+def test_unique_keeps_the_worse_of_two_quotes():
+    text = "src/calc.py:L7 `raise ZeroDivisionError` and src/calc.py:L7 `return a * b`"
+    (c,) = unique(check(text, FILES))
+    assert c.quote_match is False and not c.verified
+
+
+def test_regression_grounded_needs_the_whole_range_shown():
+    # Overlap was enough: L1-L162 counted as grounded when 5 lines were shown.
+    shown = {"src/calc.py": [(1, 4)]}
+    v = verdict("src/calc.py:L3-L6", shown)
+    assert v["valid"] and v["grounded"] is False
+    assert v["reason"] == "only part of the range was in the context shown to the model"
+    assert verdict("src/calc.py:L2-L4", shown)["grounded"] is True
+
+
+def test_grounded_only_by_the_cited_file():
+    shown = {"src/util.py": [(1, 2)], "lib/util.py": [(1, 1)]}
+    assert verdict("src/util.py:L1", shown)["grounded"] is True
+    assert verdict("src/calc.py:L1", shown)["grounded"] is False
