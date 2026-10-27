@@ -103,7 +103,7 @@ def read_lines(root: Path, rel: str) -> list[str]:
     return split_lines((root / rel).read_text(encoding="utf-8", errors="replace"))
 
 
-# --- v1 behaviour (main branch, backend/src/brain/scholar.py) -------------------------
+# --- v1 behaviour (tag v1.0.0, backend/src/brain/scholar.py) --------------------------
 
 V1_IGNORED_DIRS = frozenset(
     ("node_modules", ".git", "__pycache__", "dist", ".venv", "venv", ".next", "build", "out")

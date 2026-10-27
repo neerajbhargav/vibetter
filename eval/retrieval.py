@@ -1,7 +1,8 @@
 """Deterministic retrieval eval: how much of the gold code each arm puts in the context.
 
 Arms, all packed into the same character budget:
-  A  v1: files in walk order, the first `budget` characters (main branch behaviour)
+  A  v1 with no file given: files in walk order, the first `budget` characters
+     (v1.0.0's fallback when scholar_explain got no file; see file_given() for the rest)
   B  BM25 over line-aware chunks
   C  BM25 + symbol/path index, fused by RRF (what v2 ships)
   D  C + the dense arm, only when the `dense` extra is installed

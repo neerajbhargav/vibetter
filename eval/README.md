@@ -36,7 +36,7 @@ Each arm packs context into the same character budget. Two budgets: 24,000 chara
 
 | Arm | Context |
 |---|---|
-| A | v1 behaviour from `main`: every file with an allowed suffix in walk order, cut at the budget, no line numbers |
+| A | v1 (tag `v1.0.0`) with no file given: every file with an allowed suffix in walk order, cut at the budget, no line numbers |
 | B | BM25 over line-aware chunks |
 | C | BM25 + symbol/path index, fused by reciprocal rank fusion (the v2 default) |
 | D | C + dense embeddings (`fastembed`, `BAAI/bge-small-en-v1.5`), only when the `dense` extra is installed |
@@ -82,7 +82,25 @@ What the numbers say:
 - Retrieval puts at least one gold line in the 24k context for 59% of questions, and in the
   60k context for 83%.
 - The dense arm does not help on this set. At 60k it lowers recall by 16 points against C.
-  It stays optional and off unless installed.
+  It stays optional and off unless `VIBETTER_DENSE=1` is set.
+
+### With the question's file given
+
+v1's `scholar_explain` required a file: it put that file first, whole, then whole files in
+walk order up to 40,000 characters. Arm A above is only its no-file fallback.
+`python -m eval.run --retrieval --file-given` gives each question its first gold file (an
+oracle choice: a user does not always pick the right file) and compares v1's targeted context
+with v2's, where the file's chunks come first. 66 questions,
+`results/retrieval-file-given-2026-10-26.json`, vibetter commit `35426f1`, 2026-10-26.
+
+| Arm | Budget | Recall [95% CI] | Any gold |
+|---|---|---|---|
+| v1, file given | 40k | 0.972 [0.946, 0.993] | 1.000 |
+| v2, file given | 24k (what v2 uses) | 0.907 [0.842, 0.962] | 0.939 |
+| v2, file given | 40k | 0.941 [0.893, 0.981] | 0.985 |
+
+With the right file, both versions show most gold lines, and v1 shows slightly more because
+it sends the whole file and more characters. v2's gain is for questions asked without a file.
 
 ### The symbol arm, before and after
 
@@ -112,8 +130,8 @@ Ollama 0.40.8 with its default sampling (no seed), 3 runs per arm. Every arm get
 
 | Arm | Context and prompt |
 |---|---|
-| v1 | v1's context (arm A, no line numbers) and v1's `scholar_explain` prompt, copied verbatim from `main` |
-| v2 | the `scholar_explain` path: line-numbered retrieved context (arm C) and the v2 prompt |
+| v1 | v1's no-file context (arm A, no line numbers) and v1's `scholar_explain` prompt, copied verbatim from `v1.0.0` |
+| v2 | `vibetter ask` with no `--file`: line-numbered retrieved context (arm C) and the v2 prompt (the `scholar_explain` tool itself requires a file) |
 | v2-strict | the v2 replies after strict verification, which drops each sentence whose citation fails |
 
 Strict mode changes no prompt, so v2-strict scores the same replies as v2 after the strict
@@ -125,39 +143,51 @@ its prompt; the eval does not reproduce that bug.
 
 - **Citation validity**: valid citations / all citations. Valid means the file exists in the
   repo and the cited lines exist.
-- **Groundedness**: valid citations whose lines were in the context the model saw / all
+- **Groundedness**: valid citations whose lines were all in the context the model saw / all
   citations.
 - **Gold-hit rate**: the share of answers with a valid citation that overlaps a gold span.
+  The narrow variant counts only citations of 30 lines or fewer.
 - **Key-term recall**: the mean share of the question's key terms that appear in the answer.
 - **Cited answers**: the share of answers with at least one citation.
 
 ### Results
 
-66 questions x 3 runs = 198 answers per arm, `eval/results/llm-2026-10-23.json`, 2026-10-23.
-The run started at vibetter commit `47bcbf8`; the file records `fccae99`, read when the run
-ended, which differs only in README files. Each cell is the mean over 3 runs with a bootstrap
-95% CI over questions; the per-run values are in the file.
+66 questions x 3 runs = 198 answers per arm. The replies were sampled on 2026-10-23
+(`results/llm-2026-10-23.json`; the run started at vibetter commit `47bcbf8`, and the file
+records `fccae99`, read when the run ended, which differs only in README files). They were
+scored again on 2026-10-26 at commit `35426f1`, with no model call
+(`results/llm-2026-10-23-rescored.json`), after two checker changes: a citation is grounded
+only when all its lines were shown (before, any overlap counted), and three more forms are
+parsed (`(path:x.py:L3)`, `lines 3-5 of x.py`, `x.py at line 3`). The first scoring gave v2
+groundedness 0.837 and a gold-hit rate of 0.343; it stays in the first file.
+
+Each cell is the mean of the 3 per-run values, with a bootstrap 95% CI over questions of the
+value pooled over runs. The file records the per-run, mean and pooled values; mean and pooled
+differ only for v1 validity (0.669 against 12/19 = 0.632).
 
 | Metric | v1 | v2 | v2-strict |
 |---|---|---|---|
-| Citation validity | 0.653 [0.357, 0.850] | 0.922 [0.884, 0.955] | 1.000 (by construction) |
-| Groundedness | 0.000 [0.000, 0.000] | 0.837 [0.778, 0.890] | 1.000 (by construction) |
-| Gold-hit rate | 0.000 [0.000, 0.000] | 0.343 [0.258, 0.434] | 0.343 [0.258, 0.434] |
+| Citation validity | 0.669 [0.375, 0.867] | 0.923 [0.885, 0.956] | 1.000 (by construction) |
+| Groundedness | 0.000 [0.000, 0.000] | 0.827 [0.767, 0.882] | 1.000 (by construction) |
+| Gold-hit rate | 0.000 [0.000, 0.000] | 0.353 [0.268, 0.450] | 0.353 [0.268, 0.450] |
+| Gold-hit rate, narrow | 0.000 [0.000, 0.000] | 0.192 [0.121, 0.268] | 0.192 [0.121, 0.268] |
 | Key-term recall | 0.264 [0.200, 0.327] | 0.455 [0.375, 0.536] | 0.450 [0.369, 0.531] |
-| Cited answers | 0.086 [0.045, 0.131] | 0.798 [0.737, 0.859] | 0.707 [0.636, 0.773] |
-| Citations per answer | 0.09 | 1.88 | 1.58 |
+| Cited answers | 0.091 [0.051, 0.136] | 0.808 [0.747, 0.869] | 0.702 [0.631, 0.768] |
+| Citations per answer | 0.10 | 1.89 | 1.56 |
+| Citations, all runs | 19 | 375 | 309 |
 
 What the numbers say:
 
 - v1 rarely cites (9% of answers), and none of its citations point at lines it was shown:
   its context holds no source code, so the few file:line references are recalled or guessed.
-  Its validity of 0.653 rests on about 6 citations per run, hence the wide interval.
-- v2 cites in 80% of answers. 92% of its citations name real lines and 84% name lines it
-  was shown. One answer in three cites a gold span.
+  Its validity of 0.669 rests on 19 citations (6, 8 and 5 per run), hence the wide interval.
+- v2 cites in 81% of answers. 92% of its citations name real lines and 83% name lines it was
+  shown in full. One answer in three cites a gold span; one in five does so with a citation of
+  30 lines or fewer.
 - Strict mode removes every citation that fails, at a small cost: the gold-hit rate is
-  unchanged, key-term recall falls by half a point, and 9% of answers lose all their
+  unchanged, key-term recall falls by half a point, and 11% of answers lose all their
   citations.
-- Run-to-run spread is large. The v2 gold-hit rate was 0.273, 0.348 and 0.409 on the three
+- Run-to-run spread is large. The v2 gold-hit rate was 0.273, 0.364 and 0.424 on the three
   runs, so a single run can mislead by several points.
 
 ## Commands
@@ -169,8 +199,10 @@ uv run python -m eval.run --retrieval --gate           # arms A-C, the CI gate, 
 uv sync --locked --extra dense                         # optional: arm D
 uv run --extra dense python -m eval.run --retrieval    # arms A-D, writes results/retrieval-<date>.json
 uv run python -m eval.run --retrieval --set-baseline   # also rewrites the gate baseline
-ollama pull qwen2.5-coder:7b                           # the answer eval needs a local Ollama
-uv run python -m eval.run --llm                        # 3 runs x 2 arms x 66 questions, writes results/llm-<date>.json
+uv run python -m eval.run --retrieval --file-given     # each question with its gold file, v1 and v2
+uv run python -m eval.run --llm --rescore eval/results/llm-2026-10-23.json   # no model call, about 15 s
+ollama pull qwen2.5-coder:7b                           # new answers need a local Ollama
+uv run python -m eval.run --llm                        # new samples: 3 runs x 2 arms x 66 questions, writes results/llm-<date>.json
 uv run python -m eval.run --llm --runs 1 --limit 1     # a quick check: 3 questions, 6 model calls
 ```
 
@@ -191,8 +223,12 @@ are cached under `eval/.cache/llm`, so an interrupted run resumes.
   lists the root's files first, and in each repo those alone exceed 60,000 characters.
 - These repos are popular, so the model may know them from training. Key-term recall can
   come from that memory; groundedness and gold hits cannot, because they check lines.
+- 9 of the 66 questions contain one of their own key terms (requests-11, click-03, click-04,
+  click-07, click-16, click-19, ky-01, ky-14, ky-15), so an answer that repeats the question
+  scores on those. Both arms are affected, and no headline number uses key-term recall.
 - A gold hit needs only an overlap. Some v2 citations name a whole chunk (about 60 lines), so
-  a hit says the model pointed at the right region, not at the exact lines.
+  a hit says the model pointed at the right region, not at the exact lines. The narrow rate
+  (citations of 30 lines or fewer) is about half the full rate.
 - Groundedness checks that cited lines were shown, not that the sentence is true. No metric
   here judges correctness of the prose.
 - One 7B model, quantized, on one machine. Larger or hosted models will score differently.

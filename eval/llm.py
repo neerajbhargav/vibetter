@@ -2,7 +2,8 @@
 
 Arms, at the same 24k-character context budget:
   v1         v1's context (walk order, first N characters, no line numbers) and v1's prompt
-  v2         line-numbered retrieved context and the v2 prompt (the scholar_explain path)
+  v2         line-numbered retrieved context and the v2 prompt, with no file given
+             (`vibetter ask` without --file; the scholar_explain tool requires a file)
   v2-strict  the v2 replies after strict verification, which drops each sentence whose
              citation fails; strict mode changes no prompt, so it reuses the v2 replies
 
@@ -54,19 +55,19 @@ NARROW = 30  # gold_hit_narrow counts only citations of at most this many lines
 
 
 def v1_prompt(question: str, context: str) -> str:
-    """ask_gemini_with_context() from main (backend/src/brain/scholar.py), no target file.
+    """ask_gemini_with_context() from v1.0.0 (backend/src/brain/scholar.py), no target file.
 
-    Copied verbatim; the dashes are escaped only to keep them out of this source file.
+    Copied verbatim. The em-dashes are written as escapes, so the string is the same.
     """
     return f"""You are VIBETTER, an expert coding mentor for people learning to code with AI tools (vibe coding).
 
-Your job is to explain code clearly so the user actually understands it — not just copy-paste it.
+Your job is to explain code clearly so the user actually understands it \u2014 not just copy-paste it.
 
 Rules:
 - Always cite exact file:line when referencing code
 - Explain *why* the code works, not just *what* it does
 - Use simple analogies for complex concepts
-- Be encouraging — this person is learning
+- Be encouraging \u2014 this person is learning
 
 Codebase:
 <context>
