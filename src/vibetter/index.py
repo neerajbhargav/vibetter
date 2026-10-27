@@ -1,8 +1,9 @@
 """The codebase index: which files VIBETTER reads, and how it keeps them fresh.
 
 In a git repo the file list comes from `git ls-files -co --exclude-standard`,
-so .gitignore rules apply exactly as git applies them. Outside git, a walk
-honors each directory's .gitignore. Lockfiles, minified bundles, binaries,
+so .gitignore rules apply exactly as git applies them. Outside git, or inside
+a parent repo that ignores the whole folder, a walk honors each directory's
+.gitignore. Lockfiles, minified bundles, binaries,
 files over 1 MB and secret files (see redact.py) are skipped with a reason.
 
 The index is built on first use, not at import. A watchdog observer feeds
@@ -234,7 +235,15 @@ class CodebaseIndex(FileSystemEventHandler):
         if out is None or out.returncode != 0:
             return self._walk(), "walk"
         rels = {p for p in os.fsdecode(out.stdout).split("\0") if p}
+        if not rels and self._toplevel() != self.root:
+            # The folder sits inside a parent repo that ignores it (a deny-all .gitignore
+            # in $HOME, say): git lists nothing, but the folder is not empty.
+            return self._walk(), "walk"
         return sorted(r for r in rels if not _in_skip_dir(r)), "git"
+
+    def _toplevel(self) -> Path | None:
+        out = self._git("rev-parse", "--show-toplevel")
+        return Path(os.fsdecode(out.stdout).strip()).resolve() if out.returncode == 0 else None
 
     def _walk(self) -> list[str]:
         specs: dict[str, pathspec.PathSpec | None] = {}

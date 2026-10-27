@@ -84,6 +84,20 @@ def test_walk_fallback_honors_gitignore(plain_dir: Path):
     assert index.skipped[".env"] == "secret"
 
 
+def test_regression_folder_ignored_by_a_parent_repo_is_walked(tmp_path: Path):
+    # A deny-all .gitignore in a parent repo (a dotfiles repo in $HOME) made git list
+    # nothing, so the index was silently empty and every answer had no context.
+    git(tmp_path, "init", "-q")
+    write(tmp_path, ".gitignore", "*\n!.gitignore\n")
+    project = tmp_path / "project"
+    write(project, "app.py", "x = 1\n")
+    write(project, ".gitignore", "build.log\n")
+    write(project, "build.log", "noise\n")
+    index = built(project)
+    assert index.mode == "walk"
+    assert set(index.files) == {"app.py", ".gitignore"}
+
+
 @pytest.mark.parametrize(
     "given", ["src/calc.py", "./src/calc.py", "src/../src/calc.py", "src\\calc.py"]
 )
