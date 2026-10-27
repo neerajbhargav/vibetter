@@ -58,7 +58,9 @@ and their caveats are in [eval/README.md](eval/README.md).
 - Ollama requests set `num_ctx` to fit the prompt. Before, Ollama kept its small default window
   and dropped the start of a long prompt, where the code sits, without an error.
 - The JSON config registration backs up each file and leaves a config it cannot parse
-  unchanged, instead of replacing it.
+  unchanged, instead of replacing it. Re-running the installer keeps an entry's `env`
+  (such as `VIBETTER_CODEBASE_PATH`) minus any API key, writes through a symlinked config,
+  never overwrites the first backup, and warns when Claude Desktop has no project path.
 - The frontend lockfile works with `npm ci` again, and the build reproduces the committed UI.
 - Citations written with spaces (`path L12-L20`) and quotes after a bracketed citation are
   parsed. Mixed Python from-imports keep the package edge in the graph.
@@ -67,7 +69,7 @@ and their caveats are in [eval/README.md](eval/README.md).
 
 - The model-drawn dependency graph: edges now come only from static imports.
 - The `~/.vscode/mcp.json` write in the installers. VS Code does not read MCP servers from
-  that file.
+  that file. The installers now delete a v1 entry there, because it held the API key.
 - Unused Vite template files, the unused `icons.svg` and a `.dockerignore` with no Dockerfile.
 
 ## 1.x

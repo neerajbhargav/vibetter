@@ -137,11 +137,19 @@ except config.VibetterError as e:
 # --- 4. Register with IDEs ------------------------------------------------------------
 $Registered = $false
 $NeedManual = $false
+# Exit 3 means: registered, but the entry has no VIBETTER_CODEBASE_PATH, which Claude
+# Desktop needs because it starts servers outside a project.
 function Register-Json {
-    param([string]$ConfigPath, [string]$IdeName)
-    $out = Invoke-Native { & $PythonBin -m vibetter.ide $ConfigPath $VibetterExe 2>&1 }
+    param([string]$ConfigPath, [string]$IdeName, [switch]$Desktop)
+    $flags = @()
+    if ($Desktop) { $flags = @('--desktop') }
+    $out = Invoke-Native { & $PythonBin -m vibetter.ide @flags $ConfigPath $VibetterExe 2>&1 }
     if ($LASTEXITCODE -eq 0) {
         Write-Success "$IdeName configured"
+        $script:Registered = $true
+    } elseif ($LASTEXITCODE -eq 3) {
+        Write-Warn "$IdeName registered, but it needs your project path. In $ConfigPath, add"
+        Write-Host "         `"env`": {`"VIBETTER_CODEBASE_PATH`": `"C:\\path\\to\\your\\project`"} to the vibetter entry."
         $script:Registered = $true
     } else {
         Write-Warn "$IdeName was not changed: $out"
@@ -160,10 +168,18 @@ if (Test-Path (Join-Path $env:USERPROFILE '.cursor')) {
     Register-Json (Join-Path $env:USERPROFILE '.cursor\mcp.json') 'Cursor'
 }
 if (Test-Path (Join-Path $env:APPDATA 'Claude')) {
-    Register-Json (Join-Path $env:APPDATA 'Claude\claude_desktop_config.json') 'Claude Desktop'
+    Register-Json (Join-Path $env:APPDATA 'Claude\claude_desktop_config.json') 'Claude Desktop' -Desktop
 }
 if (Test-Path (Join-Path $env:USERPROFILE '.codeium\windsurf')) {
     Register-Json (Join-Path $env:USERPROFILE '.codeium\windsurf\mcp_config.json') 'Windsurf'
+}
+
+# v1 wrote the API key into .vscode\mcp.json, which VS Code does not read for MCP servers.
+$VsCodeConfig = Join-Path $env:USERPROFILE '.vscode\mcp.json'
+if (Test-Path $VsCodeConfig) {
+    $out = Invoke-Native { & $PythonBin -m vibetter.ide --remove-v1 $VsCodeConfig 2>&1 }
+    if ($LASTEXITCODE -eq 0) { if ("$out".Trim()) { Write-Host "$out" } }
+    else { Write-Warn "Could not check $VsCodeConfig for a v1 entry with your API key: $out" }
 }
 
 if ((-not $Registered) -or $NeedManual) {

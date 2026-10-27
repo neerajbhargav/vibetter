@@ -147,14 +147,18 @@ fi
 # --- 4. Register with IDEs ------------------------------------------------------------
 REGISTERED=false
 NEED_MANUAL=false
+# register_json <config> <name> [--desktop]. Exit 3 means: registered, but the entry has no
+# VIBETTER_CODEBASE_PATH, which Claude Desktop needs because it starts servers outside a project.
 register_json() {
-    if "$PYTHON_BIN" -m vibetter.ide "$1" "$VIBETTER_BIN"; then
-        success "$2 configured"
-        REGISTERED=true
-    else
-        warn "$2 was not changed. Add the server by hand (see below)."
-        NEED_MANUAL=true
-    fi
+    local status=0
+    "$PYTHON_BIN" -m vibetter.ide ${3:-} "$1" "$VIBETTER_BIN" || status=$?
+    case "$status" in
+        0) success "$2 configured"; REGISTERED=true ;;
+        3) warn "$2 registered, but it needs your project path. In $1, add"
+           echo "         \"env\": {\"VIBETTER_CODEBASE_PATH\": \"/path/to/your/project\"} to the vibetter entry."
+           REGISTERED=true ;;
+        *) warn "$2 was not changed. Add the server by hand (see below)."; NEED_MANUAL=true ;;
+    esac
 }
 
 if command -v claude >/dev/null 2>&1; then
@@ -170,13 +174,19 @@ if [ -d "$HOME/.cursor" ] || command -v cursor >/dev/null 2>&1; then
     register_json "$HOME/.cursor/mcp.json" "Cursor"
 fi
 if [ "$(uname)" = "Darwin" ] && [ -d "$HOME/Library/Application Support/Claude" ]; then
-    register_json "$HOME/Library/Application Support/Claude/claude_desktop_config.json" "Claude Desktop"
+    register_json "$HOME/Library/Application Support/Claude/claude_desktop_config.json" "Claude Desktop" --desktop
 fi
 if [ -d "$HOME/.config/Claude" ]; then
-    register_json "$HOME/.config/Claude/claude_desktop_config.json" "Claude Desktop"
+    register_json "$HOME/.config/Claude/claude_desktop_config.json" "Claude Desktop" --desktop
 fi
 if [ -d "$HOME/.codeium/windsurf" ]; then
     register_json "$HOME/.codeium/windsurf/mcp_config.json" "Windsurf"
+fi
+
+# v1 wrote the API key into ~/.vscode/mcp.json, which VS Code does not read for MCP servers.
+if [ -f "$HOME/.vscode/mcp.json" ]; then
+    "$PYTHON_BIN" -m vibetter.ide --remove-v1 "$HOME/.vscode/mcp.json" ||
+        warn "Could not check $HOME/.vscode/mcp.json for a v1 entry with your API key."
 fi
 
 if [ "$REGISTERED" = false ] || [ "$NEED_MANUAL" = true ]; then
