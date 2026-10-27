@@ -11,7 +11,8 @@ and their caveats are in [eval/README.md](eval/README.md).
 - Line-aware chunking: about 60 lines per chunk, at most 120, cut at Python `def` and `class`
   lines or at blank lines outside braces.
 - Retrieval: BM25 over a code-aware tokenizer and a symbol and path index, fused by reciprocal
-  rank fusion. An optional dense arm (`vibetter[dense]`, fastembed) is off unless installed.
+  rank fusion. An optional dense arm (`vibetter[dense]`, fastembed) is off unless
+  `VIBETTER_DENSE=1`, because it lowered recall in the eval.
 - A citation parser and checker. Each citation comes back valid (the file and lines exist),
   grounded (the model was shown those lines) and quote-matched (a quoted snippet appears in
   the cited lines). `strict=true` removes sentences whose citation fails.

@@ -72,7 +72,8 @@ sequenceDiagram
      question pulled every `test_redirect_*` function into the ranking (see
      [eval/README.md](../eval/README.md)).
    - Optionally, dense embeddings (`pip install 'vibetter[dense]'`, fastembed with
-     `BAAI/bge-small-en-v1.5`). `VIBETTER_DENSE=0` turns it off.
+     `BAAI/bge-small-en-v1.5`). It is off unless `VIBETTER_DENSE=1`, because it lowered
+     recall in the eval.
 5. **Context.** `assemble` packs chunks in rank order into a character budget: the target file
    first, then the best chunks from the rest of the repo, then the first chunk of every file as
    a fallback for broad questions. A chunk that does not fit is skipped and packing continues.

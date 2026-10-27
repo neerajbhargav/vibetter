@@ -16,7 +16,7 @@ Set TypingSpeed 30ms
 Set WaitTimeout 120s
 
 Hide
-Type `export PATH="$PWD/.venv/bin:$PATH" PS1='$ ' TIMEFORMAT=$'\nwall time: %1Rs' VIBETTER_PROVIDER=ollama VIBETTER_MODEL=qwen2.5-coder:7b VIBETTER_TRACE=0 VIBETTER_DENSE=0`
+Type `export PATH="$PWD/.venv/bin:$PATH" PS1='$ ' TIMEFORMAT=$'\nwall time: %1Rs' VIBETTER_PROVIDER=ollama VIBETTER_MODEL=qwen2.5-coder:7b VIBETTER_TRACE=0`
 Enter
 Type `D="${TMPDIR:-/tmp}/vibetter-demo-ky"; test -d "$D" || git clone -q --depth 1 --branch v2.2.0 https://github.com/sindresorhus/ky "$D"; cd "$D" && echo rea""dy`
 Enter

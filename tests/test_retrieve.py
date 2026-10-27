@@ -187,3 +187,20 @@ def test_heads_put_readme_first(shop: Path):
     heads = retriever(shop).heads()
     assert heads[0].path == "README.md"
     assert len(heads) == len({h.path for h in heads})
+
+
+def test_regression_dense_arm_needs_opt_in(shop: Path, monkeypatch):
+    # Installing the extra switched dense on, though the eval measured it lower.
+    from vibetter import server
+
+    calls: list[int] = []
+
+    def fake_embedder():
+        calls.append(1)
+        return lambda texts, query: [[float(len(t)), 1.0] for t in texts]
+
+    monkeypatch.setattr(server, "fastembed_embedder", fake_embedder)
+    assert server.Vibetter(shop).retriever().embedder is None
+    assert calls == []
+    monkeypatch.setenv("VIBETTER_DENSE", "1")
+    assert server.Vibetter(shop).retriever().embedder is not None

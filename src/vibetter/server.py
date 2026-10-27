@@ -33,7 +33,14 @@ from .gitdiff import collect_changes, number_lines, shown_spans
 from .graph import blueprint
 from .index import CodebaseIndex
 from .redact import redact
-from .retrieve import Embedder, Retriever, assemble, fastembed_embedder, render
+from .retrieve import (
+    Embedder,
+    Retriever,
+    assemble,
+    dense_requested,
+    fastembed_embedder,
+    render,
+)
 from .trace import traced
 
 LLM = Callable[[str, bool], Awaitable[str]]
@@ -120,7 +127,7 @@ class Vibetter:
             version = index.version
             if self._retriever is None or self._retriever_version != version:
                 if self._embedder is True:
-                    self._embedder = fastembed_embedder()
+                    self._embedder = fastembed_embedder() if dense_requested() else None
                 embedder = self._embedder if callable(self._embedder) else None
                 self._retriever = Retriever(index.files, self._retriever, embedder)
                 self._retriever_version = version
@@ -358,8 +365,9 @@ def build_mcp(app: Vibetter) -> FastMCP:
     async def search_code(query: str, limit: int = 8, file_path: str | None = None) -> SearchResult:
         """Find the code chunks most relevant to a query, with no LLM call.
 
-        Ranks chunks with BM25, a symbol and file-name index, and (when the
-        dense extra is installed) embeddings, fused by reciprocal rank. Each
+        Ranks chunks with BM25 and a symbol and file-name index (plus
+        embeddings with the dense extra and VIBETTER_DENSE=1), fused by
+        reciprocal rank. Each
         hit is line-numbered, so you can cite it as path:Lstart-Lend.
         file_path limits the search to one file.
         """

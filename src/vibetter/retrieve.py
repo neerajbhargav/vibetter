@@ -7,8 +7,9 @@ Three ranked arms, fused by reciprocal rank fusion (RRF, k=60):
   regexes for JS, TS and Vue; file names; file:line references such as
   traceback frames), matched only by identifiers written as code. A chunk at
   a file:line the query names is ranked first,
-- optionally a dense arm (`pip install 'vibetter[dense]'`: fastembed with
-  BAAI/bge-small-en-v1.5).
+- optionally a dense arm (`pip install 'vibetter[dense]'` and VIBETTER_DENSE=1:
+  fastembed with BAAI/bge-small-en-v1.5). It is off by default, because it
+  lowered recall in the eval (eval/README.md).
 
 assemble() packs ranked chunks into a character budget. Each block has a
 `--- path:Lstart-Lend ---` header and `NNN| ` line prefixes, and the spans
@@ -389,10 +390,13 @@ def assemble(
     return "".join(out), shown, count
 
 
+def dense_requested() -> bool:
+    """The server uses the dense arm only when VIBETTER_DENSE=1: it lowered recall in the eval."""
+    return os.getenv("VIBETTER_DENSE", "").strip().lower() in ("1", "true", "on", "yes")
+
+
 def fastembed_embedder() -> Embedder | None:
-    """The dense arm, when the `dense` extra is installed and VIBETTER_DENSE is not 0."""
-    if os.getenv("VIBETTER_DENSE", "").strip().lower() in ("0", "false", "off", "no"):
-        return None
+    """The dense arm's embedder, or None when the `dense` extra is not installed."""
     try:
         from fastembed import TextEmbedding  # pyright: ignore[reportMissingImports]
     except ImportError:

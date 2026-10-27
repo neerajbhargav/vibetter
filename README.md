@@ -209,7 +209,7 @@ flowchart TD
 VIBETTER indexes the files git tracks and splits them into chunks of about 60 lines that end
 at function or block boundaries. A question runs through BM25 and a symbol and path index,
 and reciprocal rank fusion merges the two rankings, plus a dense ranking when that extra is
-installed. The best chunks are packed into a fixed character budget, each line prefixed with
+installed and `VIBETTER_DENSE=1` is set. The best chunks are packed into a fixed character budget, each line prefixed with
 its number, and VIBETTER records exactly which lines it packed. The model's reply goes through
 a parser that finds every `path:line` citation, and a verifier that checks each one against
 the index and against the packed lines, with no model call. The tool returns the answer with

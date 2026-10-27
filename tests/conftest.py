@@ -82,7 +82,7 @@ def isolated_env(_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     for name in PROVIDER_ENV:
         monkeypatch.delenv(name, raising=False)
     # Never download an embedding model in tests, even if the dense extra is installed.
-    monkeypatch.setenv("VIBETTER_DENSE", "0")
+    monkeypatch.delenv("VIBETTER_DENSE", raising=False)
     # Traces and audio go to a fresh ~/.vibetter per test.
     monkeypatch.setenv("VIBETTER_HOME", str(tmp_path / "vibetter-home"))
     return _home
