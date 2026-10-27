@@ -131,7 +131,8 @@ Cursor (`~/.cursor/mcp.json`, or `.cursor/mcp.json` in a project) and Claude Des
 ```
 
 Claude Desktop is not tied to a project, so it needs `VIBETTER_CODEBASE_PATH`. Without it,
-VIBETTER refuses to index `/` or your home directory and says so. If the app cannot find
+VIBETTER refuses to index `/` or your home directory and says so. The installer warns when the
+entry has no such path, and keeps the `env` block when you run it again to update. If the app cannot find
 `uvx`, use its full path (`which uvx`). After the installer, the command is
 `~/.vibetter/venv/bin/vibetter` with no arguments.
 
