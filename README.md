@@ -6,8 +6,8 @@ VIBETTER is an MCP server for Claude Code, Cursor, Claude Desktop and Windsurf. 
 repo into line-numbered chunks, retrieves the ones a question needs, and asks the model you
 choose to cite `path:L12-L20`. Then it checks each citation without a second model call: the
 file must be indexed, the lines must exist, and every cited line must be in the context the
-model was shown. It also explains the latest change, diagnoses errors, and draws a dependency graph from
-static imports.
+model was shown. It also explains the latest change, diagnoses errors, and draws a dependency
+graph from static imports.
 
 [![CI](https://github.com/neerajbhargav/vibetter/actions/workflows/ci.yml/badge.svg)](https://github.com/neerajbhargav/vibetter/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/neerajbhargav/vibetter)](LICENSE)
