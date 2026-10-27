@@ -1,7 +1,7 @@
 """The MCP server: seven tools and the ui://blueprint resource.
 
-Q&A tools retrieve line-numbered chunks, ask the model, then check every
-path:Lstart-Lend citation in the reply against the index and against the
+Q&A tools retrieve line-numbered chunks, ask the model, then check each
+path:Lstart-Lend citation found in the reply against the index and against the
 context the model was shown. search_code and verify_citations make no LLM
 call, so a host agent such as Claude Code can use them freely.
 
@@ -348,8 +348,8 @@ def build_mcp(app: Vibetter) -> FastMCP:
 
         file_path is relative to the project root, for example "src/api.js".
         Each path:Lstart-Lend citation in the answer comes back checked: valid
-        (the file and lines exist) and grounded (the lines were in the context
-        the model saw). strict=true removes sentences whose citation fails.
+        (the file and lines exist) and grounded (every cited line was in the
+        context the model saw). strict=true removes sentences whose citation fails.
         """
         return await _tool(app.explain(question, file_path, strict))
 
@@ -382,7 +382,7 @@ def build_mcp(app: Vibetter) -> FastMCP:
 
     @mcp.tool
     async def verify_citations(text: str, strict: bool | None = None) -> Answer:
-        """Check every path:line citation in a text against the indexed files,
+        """Check each path:line citation found in a text against the indexed files,
         with no LLM call. Reports, per citation, whether the file and lines
         exist and whether a quoted snippet matches. Use it on your own answers."""
         return await _tool(app.verify(text, strict))

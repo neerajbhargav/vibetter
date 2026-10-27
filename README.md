@@ -1,21 +1,21 @@
 # VIBETTER
 
-**Questions about AI-written code, answered from your repo, with every file:line citation checked.**
+**Questions about AI-written code, answered from your repo, with every file:line citation it parses checked.**
 
 VIBETTER is an MCP server for Claude Code, Cursor, Claude Desktop and Windsurf. It splits your
 repo into line-numbered chunks, retrieves the ones a question needs, and asks the model you
 choose to cite `path:L12-L20`. Then it checks each citation without a second model call: the
-file must be indexed, the lines must exist, and the lines must be in the context the model was
-shown. It also explains the latest change, diagnoses errors, and draws a dependency graph from
+file must be indexed, the lines must exist, and every cited line must be in the context the
+model was shown. It also explains the latest change, diagnoses errors, and draws a dependency graph from
 static imports.
 
 [![CI](https://github.com/neerajbhargav/vibetter/actions/workflows/ci.yml/badge.svg)](https://github.com/neerajbhargav/vibetter/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/neerajbhargav/vibetter)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 
-![vibetter ask on ky v2.2.0 with qwen2.5-coder:7b: checked citations, one marked as failed](docs/demo.gif)
+![vibetter ask on ky v2.2.0 with qwen2.5-coder:7b: six citations, each checked](docs/demo.gif)
 
-*A real, uncut recording made with [VHS](https://github.com/charmbracelet/vhs) from [docs/demo.tape](docs/demo.tape): `vibetter ask` on ky v2.2.0, answered by qwen2.5-coder:7b in local Ollama on an Apple M4 Pro, with the model already loaded. Two citations check out. The model also cited `L1415` in a 46-line file, and VIBETTER flags it with the reason. Answers differ between runs; this take was kept because it shows a failed check.*
+*A real, uncut recording made with [VHS](https://github.com/charmbracelet/vhs) from [docs/demo.tape](docs/demo.tape): `vibetter ask` on ky v2.2.0 with `--file source/utils/is-network-error.ts`, answered by qwen2.5-coder:7b in local Ollama on an Apple M4 Pro, with the model already loaded. Answers differ between runs. Of 12 takes recorded on 2026-10-26, 8 had citations and all 25 of those verified; 4 had none. This take has the most. The quickstart below shows a failed check. Latency is not benchmarked (see [eval/README.md](eval/README.md)).*
 
 ## The problem
 
@@ -33,19 +33,38 @@ held-out set; the symbol-matching rule was changed after this set exposed a prob
 answer eval uses one small local model, whose memory of these popular repos can help its
 key-term recall. Method, all arms and raw results: [eval/README.md](eval/README.md).
 
-| Metric | v1 (`main`) | v2 [95% CI] | n | Setup | Reproduce |
-|---|---|---|---|---|---|
-| Share of gold lines in a 24k-char context | 0.000 | 0.542 [0.429, 0.657] | 66 questions | retrieval only, no LLM, commit `c4eb002` | `uv run python -m eval.run --retrieval` |
-| Share of gold lines in a 60k-char context | 0.000 | 0.798 [0.706, 0.884] | 66 questions | same | same |
-| Citations that name real lines | 0.653 | 0.922 [0.884, 0.955] | 198 answers per arm | qwen2.5-coder:7b Q4_K_M, Ollama 0.40.8, 3 runs, commit `47bcbf8` | `uv run python -m eval.run --llm` |
-| Citations to lines the model was shown | 0.000 | 0.837 [0.778, 0.890] | 198 answers per arm | same | same |
-| Answers that cite a gold span | 0.000 | 0.343 [0.258, 0.434] | 198 answers per arm | same | same |
+The v1 baseline is the `v1.0.0` tag. v1's `scholar_explain` required a file and put it
+first. With no file, v1 fell back to the start of the repo walk (60,000 characters for a
+question, 30,000 for `debug_error_in_context`), which the "no file" rows reproduce; in all
+three repos a changelog or readme filled that before any source file. With the file given,
+both versions show most gold lines. So v2's measured gain is for questions asked without a
+file, as `vibetter ask` with no `--file` does, and the answer rows below are that case.
 
-Measured 2026-10-23. Answer metrics are means of 3 runs; v1's intervals are in the eval README.
-v1's context fills up with each repo's changelog or readme, so it holds no gold line. With
-`strict=true`, every remaining citation names shown lines; the gold-hit rate stays 0.343 and 9%
-of answers lose all their citations. CI re-runs the retrieval eval on every push and fails if
-v2's recall drops more than one point below the committed baseline.
+| Metric | v1 [95% CI] | v2 [95% CI] | n | Setup | Reproduce |
+|---|---|---|---|---|---|
+| Gold lines in the context, no file, 24k chars (v2's budget) | 0.000 | 0.542 [0.429, 0.657] | 66 questions | retrieval only, no LLM, commit `c4eb002` | `uv run python -m eval.run --retrieval` |
+| Gold lines in the context, no file, 60k chars (v1's budget) | 0.000 | 0.798 [0.706, 0.884] | 66 questions | same | same |
+| Gold lines in the context, the question's file given | 0.972 [0.946, 0.993] at 40k | 0.907 [0.842, 0.962] at 24k | 66 questions | file = first gold file (an oracle), commit `35426f1` | `uv run python -m eval.run --retrieval --file-given` |
+| Citations that name real lines | 0.669 [0.375, 0.867] | 0.923 [0.885, 0.956] | v1 19 citations, v2 375 (198 answers each) | no file; qwen2.5-coder:7b Q4_K_M, Ollama 0.40.8, 3 runs, re-scored at `35426f1` | `uv run python -m eval.run --llm --rescore eval/results/llm-2026-10-23.json` |
+| Citations whose lines the model was all shown | 0.000 | 0.827 [0.767, 0.882] | same | same | same |
+| Answers that cite a gold span | 0.000 | 0.353 [0.268, 0.450] | 198 answers per arm | same | same |
+| Same, counting only citations of 30 lines or fewer | 0.000 | 0.192 [0.121, 0.268] | 198 answers per arm | same | same |
+
+Retrieval measured 2026-10-23 (no file) and 2026-10-26 (file given). The answers were sampled
+on 2026-10-23 (the run started at commit `47bcbf8`; the file records `fccae99`, which differs
+only in README files) and re-scored on 2026-10-26 by the current checker, with no model call.
+Answer metrics are means of the 3 per-run values; each interval is a bootstrap of the value
+pooled over runs, which differs only for v1 validity (pooled 12/19 = 0.632). v1's validity
+rests on 19 citations, because v1 cited in 9% of its answers.
+
+What the parts add: BM25 over line-aware chunks alone gets 0.535 at 24k and 0.757 at 60k.
+Adding the symbol and path index (the v2 default) changes that by +0.007 [-0.053, 0.068] and
++0.041 [0.000, 0.094]. Most of the gain over v1 comes from retrieving chunks at all. A gold hit
+needs only one overlapping line, and many citations name a whole chunk of about 60 lines,
+hence the narrower row. With `strict=true`, every remaining parsed citation names shown lines;
+the gold-hit rate stays 0.353 and 11% of answers lose all their citations. CI re-runs the
+retrieval eval on every push and fails if v2's recall drops more than one point below the
+committed baseline.
 
 ## Quickstart
 
@@ -127,7 +146,7 @@ VIBETTER refuses to index `/` or your home directory and says so. If the app can
 | Anthropic Claude | Yes ([get key](https://console.anthropic.com/settings/keys)) | claude-haiku-5-5, claude-sonnet-5-5 |
 | Ollama (local) | No | qwen2.5-coder:7b (`ollama pull qwen2.5-coder:7b` first) |
 
-Model IDs were checked against each provider's model list on 2026-10-21. Set `VIBETTER_MODEL`
+These are the model IDs as of 2026-10-21; no script in this repo re-checks them. Set `VIBETTER_MODEL`
 in `~/.vibetter/.env` to try another model first. A rate limit, server error, connection error
 or missing model moves to the next model in the chain; an authentication or request error stops
 at once and comes back to the IDE as a tool error.
@@ -153,8 +172,8 @@ scholar_explain("src/auth.js", "Why is the token stored in httpOnly cookies inst
 ```
 
 ### `debug_error_in_context(error_message, file_path?, strict?)`
-Paste an error message. Traceback frames such as `File "app/db.py", line 41` pull those exact
-chunks into the context. The model returns the cause and a concrete fix, with checked citations.
+Paste an error message. Traceback frames such as `File "app/db.py", line 41` put those exact
+chunks first in the context. The model returns the cause and a concrete fix, with checked citations.
 ```
 debug_error_in_context("TypeError: Cannot read properties of undefined (reading 'map')")
 ```
@@ -164,7 +183,7 @@ Retrieval only, no LLM call and no key. Returns the best chunks with `path:Lstar
 and numbered lines, so a host agent can read and cite them.
 
 ### `verify_citations(text, strict?)`
-No LLM call. Checks every `path:line` reference in a text against the index: the file exists,
+No LLM call. Checks every `path:line` reference it parses in a text against the index: the file exists,
 the lines exist, and a code quote placed right after the citation matches those lines. Host
 agents can run it on their own answers.
 
@@ -221,12 +240,13 @@ one verdict per citation. Module-level detail and the full verifier contract are
 - Chose lookup-based citation checks over an LLM judge, because a lookup costs no tokens, gives
   the same verdict on every run, and cannot be argued out of it.
 - Chose BM25 plus a symbol and path index over embeddings by default, because the dense arm
-  lowered recall in a 60k context from 0.798 to 0.636 (66 questions,
-  [eval/results/retrieval-2026-10-23.json](eval/results/retrieval-2026-10-23.json)). Dense
-  stays an opt-in extra.
-- Chose line-numbered context with recorded spans over raw file text, because a model can only
-  cite lines it sees numbered, and the spans let the verifier tell real lines from lines the
-  model was actually shown.
+  did not help at the 24k budget v2 uses (-0.028, 95% CI -0.154 to +0.097) and lowered recall
+  at 60k (-0.162, CI -0.299 to -0.027), on 66 questions
+  ([eval/results/retrieval-2026-10-23.json](eval/results/retrieval-2026-10-23.json)). It also
+  downloads a model of about 64 MB. Dense is opt-in: the `dense` extra plus `VIBETTER_DENSE=1`.
+- Chose line-numbered context with recorded spans over raw file text, because a model cites
+  lines reliably only when it sees them numbered (v1 cited in 9% of answers, v2 in 81%), and
+  the spans let the verifier tell real lines from lines the model was actually shown.
 - Chose static imports over a model-drawn graph, because v1 asked the model for edges and
   positions, which it could invent, while static analysis gives the same graph for the same
   files.
@@ -254,9 +274,14 @@ the same way, because the host agent sends them to its own model. Traces stay in
 - The check proves that a citation points at real lines the model saw. It does not prove that
   the sentence around it is true. A claim with no citation is not checked; strict mode only
   flags an answer that has no citations at all.
-- Small local models do not always cite. In the answer eval, qwen2.5-coder:7b cited in 0.798
-  of v2 answers (198 answers), so about one answer in five has nothing to check. A bare range
-  with no path, such as "and L43-L46" after a citation, is not parsed.
+- Small local models do not always cite. In the answer eval, qwen2.5-coder:7b cited in 0.808
+  of v2 answers (198 answers), so about one answer in five has nothing to check.
+- Only citations the parser finds are checked. It reads `path:L12-L20` and the common variants
+  (see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)), but not a bare range with no path, such
+  as "and L43-L46" after a citation, nor a file named only in prose. A file name with spaces is
+  read from its last word. A shorter path completes to the one indexed file that ends with it
+  (`cart.py` to `shop/cart.py`), and an invented directory never does; an absolute path from
+  another checkout (a traceback) is accepted when its tail names exactly one indexed file.
 - Repo text goes into the prompt as data. A file that contains instructions can steer the
   model's answer; the verifier still checks its citations, but not its prose.
 - JS, TS and Vue imports come from a regex, not a parser. Imports built at runtime, path
@@ -275,23 +300,30 @@ uv run python -m eval.run --retrieval --gate     # deterministic retrieval eval,
 cd frontend && npm ci && npm run build           # rebuilds src/vibetter/ui
 ```
 
-CI runs ruff and pyright, builds the wheel, runs pytest on Python 3.10 to 3.13, rebuilds the
-frontend (which must reproduce the committed `src/vibetter/ui`), checks both installers'
-syntax, and runs the eval job: the label check plus a retrieval recall gate that fails if v2's
-recall drops more than one point below the committed baseline. The answer eval needs a local
-Ollama and runs by hand (`uv run python -m eval.run --llm`). `vhs docs/demo.tape` re-records
-the demo.
+CI runs ruff and pyright, builds the wheel, runs pytest on Python 3.10 to 3.14 on Ubuntu and
+3.13 on macOS, rebuilds the frontend (which must reproduce the committed `src/vibetter/ui`),
+runs `install.sh` twice in a throwaway HOME on Ubuntu and macOS (`tests/installer_smoke.sh`),
+parses `install.ps1`, and runs the eval job: the label check plus a retrieval recall gate that
+fails if v2's recall drops more than one point below the committed baseline. The answer eval
+needs a local Ollama and runs by hand: `uv run python -m eval.run --llm` samples new answers
+(about 3 hours), and `--rescore` scores the committed ones again in seconds.
+`vhs docs/demo.tape` re-records the demo.
 
-Repo map: `src/vibetter/` is the package: `server.py` (tools), `index.py` (file index and
-watcher), `chunk.py` (line-aware chunks), `retrieve.py` (BM25, symbols, dense arm, RRF and
-context assembly), `cite.py` (citation parser and checker), `graph.py` (static import graph
-and layout), `gitdiff.py` (change collection), `providers.py` (LLM providers), `trace.py`
-(JSONL and OpenTelemetry traces), `redact.py` (secret handling), `ide.py` (IDE config
-registration) and `cli.py` (the `vibetter` command). `frontend/` is the Vue Flow blueprint UI.
-`tests/` holds the offline suite, and `tests/fixtures/shop` is a synthetic Python and Vue repo
-the tests run against. `eval/` holds the public eval: datasets, scripts and raw results.
-`docs/` holds the architecture notes and the demo. Changes are listed in
-[CHANGELOG.md](CHANGELOG.md).
+| Path | What it holds |
+|---|---|
+| `src/vibetter/server.py` | the MCP tools |
+| `src/vibetter/index.py`, `chunk.py` | the file index and watcher; line-aware chunks |
+| `src/vibetter/retrieve.py` | BM25, symbols, the dense arm, RRF and context assembly |
+| `src/vibetter/cite.py` | the citation parser and checker |
+| `src/vibetter/graph.py`, `gitdiff.py` | the static import graph; change collection |
+| `src/vibetter/providers.py`, `redact.py`, `trace.py` | LLM providers; secret handling; traces |
+| `src/vibetter/ide.py`, `cli.py` | IDE config registration; the `vibetter` command |
+| `frontend/` | the Vue Flow blueprint UI |
+| `tests/` | the offline suite; `tests/fixtures/shop` is a synthetic Python and Vue repo |
+| `eval/` | the public eval: datasets, scripts and raw results |
+| `docs/` | the architecture notes and the demo |
+
+Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ---
 

@@ -1,6 +1,7 @@
 # Architecture
 
-VIBETTER answers questions about a repo and checks every `path:line` citation in the answer.
+VIBETTER answers questions about a repo and checks every `path:line` citation it parses in the
+answer.
 This page describes the modules, how data moves through them, and the exact contract the
 citation verifier enforces. The code lives in `src/vibetter/`; each module's docstring repeats
 the part of this page that concerns it.
@@ -52,8 +53,8 @@ sequenceDiagram
    working directory. It refuses `/` and the home directory when they come from the working
    directory, because some hosts start servers there.
 2. **Index.** In a git repo the file list is `git ls-files -co --exclude-standard`, so
-   `.gitignore` applies as git applies it. Outside git, a walk honors each directory's
-   `.gitignore`. Lockfiles, minified bundles, binaries, files over 1 MB and secret files are
+   `.gitignore` applies as git applies it. Outside git, or inside a parent repo that ignores
+   the whole folder, a walk honors each directory's `.gitignore`. Lockfiles, minified bundles, binaries, files over 1 MB and secret files are
    skipped, each with a reason that `vibetter index --stats` prints. The index is built on the
    first tool call, not at import. With the watcher on, created, modified, deleted and moved
    events feed a trailing-edge debounce (0.3 s, at most 5 s); a flush re-reads only the changed
@@ -66,8 +67,9 @@ sequenceDiagram
    - BM25 over a tokenizer that splits camelCase, snake_case and path segments and also keeps
      each whole identifier.
    - A symbol and path index: definitions (from `ast` for Python, regexes for JS, TS and Vue),
-     file names, and `file:line` references such as traceback frames. Only identifiers written
-     as code match it: snake_case, camelCase, dotted names, calls, keyword arguments and
+     file names, and `file:line` references such as traceback frames. A chunk at a `file:line`
+     the query names is put first, ahead of the fused ranking. Only identifiers written as code
+     match it: snake_case, camelCase, dotted names, calls, keyword arguments and
      backticked names. Plain English words go to BM25 only. Before this rule, "redirect" in a
      question pulled every `test_redirect_*` function into the ranking (see
      [eval/README.md](../eval/README.md)).
@@ -94,9 +96,13 @@ sequenceDiagram
 
 `explain_last_change` follows the same path with a diff in place of retrieved chunks.
 `gitdiff.collect_changes` takes staged, unstaged and untracked changes, or the last commit on a
-clean tree, leaves out secret files and lockfiles, and budgets each file so one large file does
-not crowd out the rest. Each line inside a hunk carries its new-file line number, and
-`shown_spans` gives the new-file lines the diff shows, for the grounding check.
+clean tree (a merge commit against its first parent), leaves out secret files and lockfiles,
+and budgets each file so one large file does not crowd out the rest. It pins the `a/` and `b/`
+prefixes, reads paths unquoted and skips textconv drivers, so the user's git config cannot
+change the paths. A change with no line edits is an error, not an empty prompt. Each line
+inside a hunk carries its new-file line number, and `shown_spans` gives the new-file lines the
+diff shows, for the grounding check. The diffed files are re-read before the check, because
+the watcher's index can lag behind git by the debounce.
 
 `search_code` and `verify_citations` stop before the model step. `search_code` redacts each hit,
 because the host agent sends the hits to its own model. `verify_citations` checks a text that
@@ -112,28 +118,37 @@ only to name groups of files.
 
 `cite.parse` finds citations in free text. It accepts the form the prompt asks for,
 `path:L12-L20` or `path:L12`, and the variants models write anyway: `path:12-20`,
-`path#L12-L20`, `path L12-L20`, `path:12:5`, `path, lines 12-20`, `path (line 12)` and
-`File "path", line 12`. It skips URLs such as `https://host/x.py:12` and `host:port` forms.
-A code quote in backticks or double quotes placed right after a citation, or right after the
-bracket that closes it, is attached to that citation.
+`path#L12-L20`, `path L12-L20`, `path:12:5`, `path, lines 12-20`, `path (line 12)`,
+`path at line 12`, `(path:path/x.py:L12)`, `lines 12-20 of path` and
+`File "path", line 12`. Line numbers are ASCII digits. A path starts only at a token boundary
+(the start of the text, whitespace, a quote or backtick, `(`, `[` and similar), may start with
+a dot (`.github/workflows/ci.yml`) and may hold `[slug]` and `(group)` segments. So it skips
+URLs such as `https://host/x.py:12` and `host:port` forms, and it never starts inside a word:
+`app/shop/[id]/page.tsx` is not read as `/page.tsx`. No two repeats in the pattern can trade
+characters, so parsing time is linear in the text. A code quote in backticks or double quotes
+placed right after a citation, or right after the bracket that closes it, is attached to that
+citation, unless the quote is itself a citation or has fewer than 3 non-space characters.
 
 `cite.check_ref` then gives each citation these verdicts:
 
 | Field | True when | Values |
 |---|---|---|
 | `valid` | the path resolves to one indexed file, and `1 <= start <= end <= line count` | always set |
-| `grounded` | the range overlaps a span the model was shown | `None` when no shown spans were passed (`verify_citations`) |
+| `grounded` | every cited line lies in one span of that file the model was shown | `None` when no shown spans were passed (`verify_citations`) |
 | `quote_match` | every part of the quote (split on `...`) appears in the cited lines, whitespace squashed | `None` when no quote follows the citation |
 | `verified` | `valid`, and neither `grounded` nor `quote_match` is `False` | derived |
 
 Path resolution accepts `./x`, absolute paths under the root, backslashes, and a shorter path
 that matches exactly one indexed file by suffix. It never accepts an invented relative prefix:
-`source/utils/types/retry.ts` does not resolve to `source/types/retry.ts`.
+`source/utils/types/retry.ts` does not resolve to `source/types/retry.ts`. An absolute path
+outside the root is accepted when it ends in exactly one indexed path, so a traceback from
+another checkout (`/srv/app/shop/cart.py`) resolves to `shop/cart.py`. The verifier only
+looks up indexed text; it never reads a file outside the index.
 
 Each failed check carries one `reason`: `file not indexed`, `ambiguous path: N indexed files
 match`, `malformed line range`, `line out of range: the file has N lines`, `lines exist but
-were not in the context shown to the model`, or `quoted code does not appear in the cited
-lines`.
+were not in the context shown to the model`, `only part of the range was in the context shown
+to the model`, or `quoted code does not appear in the cited lines`.
 
 `cite.unique` keeps one check per `(path, start, end)` and keeps the worst verdict when a span
 is cited twice. `cite.counts` reports `total`, `valid`, `grounded` and `unverified`.
@@ -145,7 +160,8 @@ why. An answer with no citations at all gets a note that there was nothing to ve
 **What the contract does not cover.** It proves that a citation points at real lines, and at
 lines the model saw. It does not prove that the sentence around the citation is true. A claim
 with no citation is not checked. A bare range with no path, such as "and L43-L46" after a
-citation, is not parsed.
+citation, is not parsed, nor is a file named only in prose. A file name with spaces is read
+from its last word.
 
 ## Errors and traces
 
