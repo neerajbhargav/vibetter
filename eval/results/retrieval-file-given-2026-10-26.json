@@ -1,0 +1,1467 @@
+{
+ "eval": "retrieval-file-given",
+ "vibetter_commit": "35426f1532867f235bb1a07b99ed3909aeac7631",
+ "vibetter_dirty": false,
+ "python": "3.12.13",
+ "repos": [
+  {
+   "name": "click",
+   "url": "https://github.com/pallets/click",
+   "ref": "8.5.0",
+   "sha": "8b19813f2bfca99f1018a587a8cf54fc959f2e5d",
+   "language": "Python",
+   "license": "BSD-3-Clause"
+  },
+  {
+   "name": "requests",
+   "url": "https://github.com/psf/requests",
+   "ref": "v2.34.2",
+   "sha": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+   "language": "Python",
+   "license": "Apache-2.0"
+  },
+  {
+   "name": "ky",
+   "url": "https://github.com/sindresorhus/ky",
+   "ref": "v2.2.0",
+   "sha": "3541888878c4d303a8bc2ad61815f4e048f55a5d",
+   "language": "TypeScript",
+   "license": "MIT"
+  }
+ ],
+ "questions": 66,
+ "target": "the question's first gold file (an oracle choice)",
+ "arms": {
+  "A+file": "v1 scholar_explain: the target file whole, then whole files in walk order up to 40,000 characters",
+  "C+file": "v2 scholar_explain: the target file's chunks first, then ranked chunks"
+ },
+ "budgets_chars": {
+  "A+file": 40000,
+  "C+file": [
+   24000,
+   40000
+  ]
+ },
+ "metrics": {
+  "recall": "share of gold lines that appear complete in the context",
+  "any_gold_in_context": "share of questions with at least one gold line shown",
+  "ci95": "percentile bootstrap over questions, 10,000 resamples, seed 0"
+ },
+ "summary": {
+  "A+file@40000": {
+   "n": 66,
+   "recall": 0.9721,
+   "recall_ci95": [
+    0.9458,
+    0.9927
+   ],
+   "any_gold_in_context": 1.0
+  },
+  "C+file@24000": {
+   "n": 66,
+   "recall": 0.9066,
+   "recall_ci95": [
+    0.842,
+    0.9621
+   ],
+   "any_gold_in_context": 0.9394
+  },
+  "C+file@40000": {
+   "n": 66,
+   "recall": 0.9413,
+   "recall_ci95": [
+    0.8926,
+    0.9812
+   ],
+   "any_gold_in_context": 0.9848
+  }
+ },
+ "rows": [
+  {
+   "id": "click-01",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-01",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 0.0
+  },
+  {
+   "id": "click-01",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 0.105263
+  },
+  {
+   "id": "click-02",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-02",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-02",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-03",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-03",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-03",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-04",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-04",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-04",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-05",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-05",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-05",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-06",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-06",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-06",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-07",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-07",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-07",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-08",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-08",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-08",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-09",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-09",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 0.0
+  },
+  {
+   "id": "click-09",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-10",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-10",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-10",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-11",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-11",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-11",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-12",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-12",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-12",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-13",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-13",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-13",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-14",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-14",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-14",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-15",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-15",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-15",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-16",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-16",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-16",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-17",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-17",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 0.0
+  },
+  {
+   "id": "click-17",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 0.0
+  },
+  {
+   "id": "click-18",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-18",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-18",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-19",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-19",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-19",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-20",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-20",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-20",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-21",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-21",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-21",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-22",
+   "repo": "click",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-22",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "click-22",
+   "repo": "click",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-01",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-01",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-01",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-02",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-02",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-02",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-03",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-03",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-03",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-04",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-04",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-04",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-05",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-05",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-05",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-06",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-06",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-06",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-07",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-07",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-07",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-08",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-08",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-08",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-09",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-09",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-09",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-10",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-10",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-10",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-11",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-11",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-11",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-12",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 0.52
+  },
+  {
+   "id": "requests-12",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 0.52
+  },
+  {
+   "id": "requests-12",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 0.52
+  },
+  {
+   "id": "requests-13",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-13",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-13",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-14",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-14",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-14",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-15",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-15",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-15",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-16",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 0.444444
+  },
+  {
+   "id": "requests-16",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 0.444444
+  },
+  {
+   "id": "requests-16",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 0.444444
+  },
+  {
+   "id": "requests-17",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-17",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-17",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-18",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 0.825
+  },
+  {
+   "id": "requests-18",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 0.825
+  },
+  {
+   "id": "requests-18",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 0.825
+  },
+  {
+   "id": "requests-19",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-19",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-19",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-20",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-20",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-20",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-21",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-21",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-21",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-22",
+   "repo": "requests",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-22",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "requests-22",
+   "repo": "requests",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-01",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-01",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-01",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-02",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-02",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 0.75
+  },
+  {
+   "id": "ky-02",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 0.75
+  },
+  {
+   "id": "ky-03",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 0.694444
+  },
+  {
+   "id": "ky-03",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 0.694444
+  },
+  {
+   "id": "ky-03",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 0.694444
+  },
+  {
+   "id": "ky-04",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-04",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-04",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-05",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-05",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-05",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-06",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-06",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-06",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-07",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 0.875
+  },
+  {
+   "id": "ky-07",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 0.875
+  },
+  {
+   "id": "ky-07",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 0.875
+  },
+  {
+   "id": "ky-08",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-08",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 0.0
+  },
+  {
+   "id": "ky-08",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-09",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-09",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-09",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-10",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-10",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-10",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-11",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-11",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-11",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-12",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-12",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-12",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-13",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-13",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 0.8125
+  },
+  {
+   "id": "ky-13",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-14",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-14",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-14",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-15",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-15",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-15",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-16",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-16",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-16",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-17",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 0.914286
+  },
+  {
+   "id": "ky-17",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 0.914286
+  },
+  {
+   "id": "ky-17",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 0.914286
+  },
+  {
+   "id": "ky-18",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-18",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-18",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-19",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-19",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-19",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-20",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 0.884615
+  },
+  {
+   "id": "ky-20",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-20",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-21",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-21",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-21",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-22",
+   "repo": "ky",
+   "arm": "A+file",
+   "budget": 40000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-22",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 24000,
+   "recall": 1.0
+  },
+  {
+   "id": "ky-22",
+   "repo": "ky",
+   "arm": "C+file",
+   "budget": 40000,
+   "recall": 1.0
+  }
+ ]
+}

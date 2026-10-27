@@ -1,0 +1,11 @@
+{
+ "arm": "C",
+ "recall_C": {
+  "24000": 0.5425,
+  "60000": 0.7982
+ },
+ "tolerance": 0.01,
+ "questions": 66,
+ "source": "retrieval-2026-10-23.json",
+ "vibetter_commit": "c4eb002f61135d2806c1d31425b8a97a9942447b"
+}

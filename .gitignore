@@ -28,5 +28,8 @@ dist-ssr/
 !tsconfig*.json
 !vite.config.*
 
-# Generated outputs
-backend/outputs/
+
+# Eval: the third-party checkouts are fetched on demand, never committed
+eval/.cache/
+!eval/datasets/*.json
+!eval/results/*.json

@@ -1,0 +1,633 @@
+"""MCP tool surface, exercised through the in-memory fastmcp Client."""
+
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+
+import pytest
+from conftest import (
+    CALC_PY,
+    UTIL_PY,
+    FakeLLM,
+    call_tool,
+    data_of,
+    git,
+    line_of,
+    read_resource,
+    text_of,
+    wait_until,
+    write,
+)
+
+from vibetter import server as server_module
+from vibetter.server import Vibetter, build_mcp, create_server
+
+
+def test_lists_seven_tools_and_blueprint_resource(repo: Path, llm: FakeLLM):
+    import asyncio
+
+    from fastmcp import Client
+
+    async def go():
+        async with Client(create_server(repo, llm)) as client:
+            tools = {t.name for t in await client.list_tools()}
+            resources = {str(r.uri) for r in await client.list_resources()}
+            return tools, resources
+
+    tools, resources = asyncio.run(go())
+    assert tools == {
+        "scholar_explain",
+        "generate_blueprint",
+        "generate_audio_overview",
+        "explain_last_change",
+        "debug_error_in_context",
+        "search_code",
+        "verify_citations",
+    }
+    assert "ui://blueprint" in resources
+
+
+def test_scholar_explain_sends_target_file_and_question(repo: Path, llm: FakeLLM):
+    result = call_tool(
+        create_server(repo, llm),
+        "scholar_explain",
+        {"file_path": "src/calc.py", "question": "Why check b?"},
+    )
+    assert not result.is_error
+    data = data_of(result)
+    assert data["answer"] == "fake answer"
+    assert data["citations"] == []
+    assert data["stats"]["provider"] == "injected"
+    assert data["stats"]["chunks_in_context"] >= 1
+    assert "--- src/calc.py:L1-L8 ---" in llm.last
+    assert "Target file: src/calc.py" in llm.last
+    assert "Why check b?" in llm.last
+
+
+def test_regression_dot_slash_target_path_found(repo: Path, llm: FakeLLM):
+    result = call_tool(
+        create_server(repo, llm), "scholar_explain", {"file_path": "./src/calc.py", "question": "q"}
+    )
+    assert not result.is_error
+    assert "--- src/calc.py:L1-L8 ---" in llm.last
+
+
+def test_regression_missing_target_is_tool_error(repo: Path, llm: FakeLLM):
+    result = call_tool(
+        create_server(repo, llm), "scholar_explain", {"file_path": "src/calcc.py", "question": "q"}
+    )
+    assert result.is_error
+    assert "not found" in text_of(result).lower()
+    assert "src/calc.py" in text_of(result)  # suggests the close match
+    assert llm.prompts == []
+
+
+def test_regression_context_has_line_numbers(repo: Path, llm: FakeLLM):
+    call_tool(
+        create_server(repo, llm), "scholar_explain", {"file_path": "src/calc.py", "question": "q"}
+    )
+    assert re.search(r"^\s*1\| def add\(a, b\):$", llm.last, re.MULTILINE)
+    assert re.search(r"^\s*7\|         raise ZeroDivisionError", llm.last, re.MULTILINE)
+
+
+def test_regression_secrets_redacted_in_prompt(repo: Path, llm: FakeLLM):
+    call_tool(
+        create_server(repo, llm),
+        "scholar_explain",
+        {"file_path": "app/settings.py", "question": "q"},
+    )
+    assert "AKIAABCDEFGHIJKLMNOP" not in llm.last
+    assert "ghp_abcdefghijklmnopqrstuvwxyz0123456789" not in llm.last
+    assert "[REDACTED" in llm.last
+    assert "TIMEOUT = 30" in llm.last
+
+
+def test_regression_search_code_output_redacted(repo: Path, llm: FakeLLM):
+    # The host agent forwards search hits to its own model, so they leave the machine too.
+    data = data_of(
+        call_tool(
+            create_server(repo, llm),
+            "search_code",
+            {"query": "settings", "file_path": "app/settings.py"},
+        )
+    )
+    text = "".join(hit["text"] for hit in data["hits"])
+    assert "AKIAABCDEFGHIJKLMNOP" not in text
+    assert "[REDACTED" in text
+    assert "TIMEOUT = 30" in text
+
+
+DEPLOY_SH = "#!/bin/sh\nexport API_TOKEN=tok3nV4lue9999\nDB_PASSWORD=hunter2hunter3\nrun_deploy\n"
+DOTENV_VALUES = ("tok3nV4lue9999", "hunter2hunter3")
+
+
+def _with_deploy_script(repo: Path) -> None:
+    write(repo, "deploy.sh", DEPLOY_SH)
+    write(repo, ".envrc", "export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "add deploy script")
+
+
+def test_regression_dotenv_values_redacted_in_numbered_context(repo: Path, llm: FakeLLM):
+    # The NAME=value rule was anchored at the line start, and context lines start with
+    # `  2| `, so these values went to the provider. .envrc was not a secret file.
+    _with_deploy_script(repo)
+    server = create_server(repo, llm)
+    call_tool(server, "scholar_explain", {"file_path": "deploy.sh", "question": "how?"})
+    assert "export API_TOKEN=[REDACTED]" in llm.last
+    call_tool(server, "debug_error_in_context", {"error_message": "deploy failed"})
+    for prompt in llm.prompts:
+        for value in (*DOTENV_VALUES, "wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY"):
+            assert value not in prompt
+    hits = data_of(call_tool(server, "search_code", {"query": "API_TOKEN DB_PASSWORD deploy"}))
+    text = "".join(hit["text"] for hit in hits["hits"])
+    assert "deploy.sh" in text
+    assert not [v for v in DOTENV_VALUES if v in text]
+
+
+def test_regression_dotenv_values_redacted_in_diff(repo: Path, llm: FakeLLM):
+    _with_deploy_script(repo)
+    write(repo, "deploy.sh", DEPLOY_SH.replace("tok3nV4lue9999", "n3wT0kenValue77"))
+    call_tool(create_server(repo, llm), "explain_last_change")
+    assert "| -export API_TOKEN=[REDACTED]" in llm.last
+    assert "| +export API_TOKEN=[REDACTED]" in llm.last
+    for value in (*DOTENV_VALUES, "n3wT0kenValue77"):
+        assert value not in llm.last
+
+
+def test_regression_excluded_files_left_out_of_diff(repo: Path, llm: FakeLLM):
+    # Values with no secret shape, so only the pathspec excludes can keep them out.
+    write(repo, "config/PROD.ENV", "plain=Sup3rPlainValue\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "add prod env")
+    write(repo, ".env", "plain=dotenvPlainValue\n")
+    write(repo, "config/PROD.ENV", "plain=Sup3rChangedValue\n")
+    write(repo, "package-lock.json", '{"lockfileChangedValue": true}\n')
+    write(repo, "src/calc.py", CALC_PY + "# touched\n")
+    call_tool(create_server(repo, llm), "explain_last_change")
+    assert "# touched" in llm.last
+    for value in ("dotenvPlainValue", "Sup3rPlainValue", "Sup3rChangedValue", "lockfileChanged"):
+        assert value not in llm.last
+
+
+def _overview_prompt(root: Path, llm: FakeLLM) -> str:
+    """A broad question with no target file: the context is every file's first chunk."""
+    call_tool(create_server(root, llm), "debug_error_in_context", {"error_message": "it broke"})
+    return llm.last
+
+
+def test_regression_secret_files_never_sent(repo: Path, llm: FakeLLM):
+    prompt = _overview_prompt(repo, llm)
+    assert "--- src/calc.py:" in prompt
+    for leaked in ("sk-test-not-a-real-key", "hunter2hunter2", "BEGIN PRIVATE KEY"):
+        assert leaked not in prompt
+
+
+def test_regression_context_skips_noise_files(repo: Path, llm: FakeLLM):
+    prompt = _overview_prompt(repo, llm)
+    for source in ("src/calc.py", "src/util.py", "app/main.py"):
+        assert f"--- {source}:" in prompt
+    for noise in (
+        "package-lock.json",
+        "web/app.min.js",
+        "web/bundle.js",
+        "node_modules/dep/index.js",
+        "big.txt",
+        "data.bin",
+        "ignored.txt",
+    ):
+        assert f"--- {noise}:" not in prompt
+
+
+def test_blueprint_is_static_and_needs_no_model(shop: Path, llm: FakeLLM):
+    first = data_of(call_tool(create_server(shop, llm), "generate_blueprint"))
+    second = data_of(call_tool(create_server(shop, llm), "generate_blueprint"))
+    assert first == second
+    assert llm.prompts == []
+    edges = {(e["source"], e["target"]) for e in first["edges"]}
+    assert ("shop/api.py", "shop/cart.py") in edges
+    assert first["stats"]["method"].startswith("static imports")
+
+
+def test_blueprint_tool_links_its_ui_resource(shop: Path, llm: FakeLLM):
+    import asyncio
+
+    from fastmcp import Client
+
+    async def go():
+        async with Client(create_server(shop, llm)) as client:
+            tools = {t.name: t for t in await client.list_tools()}
+            resources = {str(r.uri): r for r in await client.list_resources()}
+            return tools["generate_blueprint"], resources["ui://blueprint"]
+
+    tool, resource = asyncio.run(go())
+    assert (tool.meta or {})["ui"]["resourceUri"] == "ui://blueprint"
+    assert resource.mime_type == "text/html;profile=mcp-app"
+
+
+def test_blueprint_labels_come_from_the_model(shop: Path):
+    reply = json.dumps({"groups": {"Checkout": ["shop/api.py", "shop/cart.py"], "Web": []}})
+    llm = FakeLLM(reply)
+    data = data_of(call_tool(create_server(shop, llm), "generate_blueprint", {"labels": True}))
+    groups = {n["id"]: n["data"]["group"] for n in data["nodes"]}
+    assert groups["shop/api.py"] == "Checkout"
+    assert groups["web/src/main.ts"] == "web"  # unlabelled files keep their directory
+    assert "shop/pricing.py" in llm.last
+
+
+def test_regression_blueprint_parse_failure_is_tool_error(shop: Path):
+    result = call_tool(
+        create_server(shop, FakeLLM("this is not json")), "generate_blueprint", {"labels": True}
+    )
+    assert result.is_error
+    assert "json" in text_of(result).lower()
+
+
+def test_blueprint_resource_renders_graph_without_a_tool_call(shop: Path, llm: FakeLLM):
+    html = read_resource(create_server(shop, llm), "ui://blueprint")
+    assert "window.__VIBETTER_BLUEPRINT__ = " in html
+    assert '"id": "shop/cart.py"' in html
+    assert 'src="/assets/' not in html  # assets are inlined
+    assert "ui/notifications/tool-result" in html  # the MCP Apps bridge is in the bundle
+    assert llm.prompts == []
+
+
+@pytest.mark.parametrize(
+    ("tool", "args"),
+    [
+        ("scholar_explain", {"file_path": "src/calc.py", "question": "q"}),
+        # Returns str, so an error string would pass FastMCP's output-schema check.
+        ("generate_audio_overview", {"question": "q"}),
+    ],
+)
+def test_regression_provider_failure_is_tool_error(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, tool: str, args: dict
+):
+    # No llm injected: the real provider layer runs and fails before any network call.
+    monkeypatch.setenv("VIBETTER_PROVIDER", "anthropic")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    result = call_tool(create_server(repo), tool, args)
+    assert result.is_error
+    assert text_of(result).startswith("ANTHROPIC_API_KEY is not set")
+
+
+def test_debug_error_includes_error_and_file(repo: Path, llm: FakeLLM):
+    result = call_tool(
+        create_server(repo, llm),
+        "debug_error_in_context",
+        {"error_message": "ZeroDivisionError: b must not be zero", "file_path": "src/calc.py"},
+    )
+    assert not result.is_error
+    assert "ZeroDivisionError: b must not be zero" in llm.last
+    assert "--- src/calc.py:L1-L8 ---" in llm.last
+
+
+def test_audio_overview_writes_mp3(repo: Path, llm: FakeLLM, monkeypatch: pytest.MonkeyPatch):
+    import gtts
+
+    class FakeTTS:
+        def __init__(self, text: str, **kwargs):
+            self.text = text
+
+        def save(self, path: str) -> None:
+            Path(path).write_bytes(b"ID3fake")
+
+    monkeypatch.setattr(gtts, "gTTS", FakeTTS)
+    result = call_tool(
+        create_server(repo, llm), "generate_audio_overview", {"question": "How does divide work?"}
+    )
+    assert not result.is_error
+    match = re.search(r"Audio saved to: (\S+\.mp3)", text_of(result))
+    assert match and Path(match.group(1)).read_bytes() == b"ID3fake"
+
+
+# --- explain_last_change ------------------------------------------------------
+
+
+def test_regression_untracked_file_in_last_change(repo: Path, llm: FakeLLM):
+    write(repo, "src/new_feature.py", "def shiny():\n    return 42\n")
+    result = call_tool(create_server(repo, llm), "explain_last_change")
+    assert not result.is_error
+    assert "src/new_feature.py" in llm.last
+    assert "+    return 42" in llm.last
+
+
+def test_regression_root_commit_is_explained(repo: Path, llm: FakeLLM):
+    result = call_tool(create_server(repo, llm), "explain_last_change")
+    assert not result.is_error, text_of(result)
+    assert "src/calc.py" in llm.last
+    assert "+def add(a, b):" in llm.last
+    # the 1.1 MB file is summarized instead of filling the whole budget
+    assert re.search(r"diff --git a/big.txt b/big.txt\n\(omitted: \d+ diff lines", llm.last)
+
+
+def test_staged_and_unstaged_changes_both_included(repo: Path, llm: FakeLLM):
+    write(repo, "src/calc.py", CALC_PY + "\n\ndef staged():\n    return 1\n")
+    git(repo, "add", "src/calc.py")
+    write(repo, "src/util.py", "def unstaged():\n    return 2\n")
+    call_tool(create_server(repo, llm), "explain_last_change")
+    assert "+def staged():" in llm.last
+    assert "+def unstaged():" in llm.last
+
+
+def test_last_change_before_first_commit(tmp_path: Path, llm: FakeLLM):
+    root = tmp_path / "fresh"
+    root.mkdir()
+    git(root, "init", "-q")
+    write(root, "hello.py", "print('hi')\n")
+    git(root, "add", "hello.py")
+    write(root, "draft.py", "x = 1\n")
+    result = call_tool(create_server(root, llm), "explain_last_change")
+    assert not result.is_error, text_of(result)
+    assert "+print('hi')" in llm.last
+    assert "+x = 1" in llm.last
+
+
+def test_regression_secret_file_changes_not_in_diff(repo: Path, llm: FakeLLM):
+    write(repo, ".env", "OPENAI_API_KEY=sk-test-changed-secret-999999\n")
+    write(repo, "src/calc.py", CALC_PY + "# touched\n")
+    call_tool(create_server(repo, llm), "explain_last_change")
+    assert "# touched" in llm.last
+    assert "sk-test-changed-secret" not in llm.last
+
+
+def _commit(repo: Path, message: str) -> None:
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", message)
+
+
+def test_regression_merge_commit_shows_what_it_brought_in(repo: Path, llm: FakeLLM):
+    # Right after merging a PR, `git show HEAD` printed no diff for the merge.
+    git(repo, "checkout", "-q", "-b", "feat")
+    write(repo, "src/util.py", UTIL_PY + "\n\ndef feature_flag():\n    return True\n")
+    _commit(repo, "feat")
+    git(repo, "checkout", "-q", "main")
+    write(repo, "README.md", "# Demo\n\nA tiny calculator, now documented.\n")
+    _commit(repo, "docs")
+    git(repo, "merge", "-q", "--no-ff", "-m", "Merge feat", "feat")
+    line = line_of(repo, "src/util.py", "def feature_flag")
+    llm.reply = f"It adds feature_flag at src/util.py:L{line}."
+    data = data_of(call_tool(create_server(repo, llm), "explain_last_change"))
+    assert "Merge feat" in llm.last
+    assert re.search(rf"^\s*{line}\| \+def feature_flag", llm.last, re.MULTILINE)
+    assert "now documented" not in llm.last  # the first parent already had it
+    assert data["citations"][0]["grounded"] is True
+
+
+def test_last_change_with_no_line_change_is_tool_error(repo: Path, llm: FakeLLM):
+    git(repo, "mv", "src/util.py", "src/helpers.py")
+    _commit(repo, "rename only")
+    result = call_tool(create_server(repo, llm), "explain_last_change")
+    assert result.is_error
+    assert "no line change" in text_of(result)
+    assert llm.prompts == []
+
+
+@pytest.mark.parametrize(
+    "config",
+    [("diff.mnemonicPrefix", "true"), ("diff.noprefix", "true"), ("core.quotePath", "true")],
+)
+def test_regression_diff_paths_ignore_user_git_config(repo: Path, config: tuple[str, str]):
+    # With mnemonicPrefix the diff said `+++ w/src/calc.py`, so every citation of it
+    # failed as "not in the context shown", and strict mode deleted all of them.
+    git(repo, "config", *config)
+    write(repo, "src/caf\u00e9.py", "x = 1\n")
+    _commit(repo, "a file with a non-ASCII name")
+    write(repo, "src/caf\u00e9.py", "x = 2\n")
+    write(repo, "src/calc.py", CALC_PY + "\n\ndef triple(x):\n    return 3 * x\n")
+    line = line_of(repo, "src/calc.py", "return 3 * x")
+    llm = FakeLLM(f"triple at src/calc.py:L{line}, x at src/caf\u00e9.py:L1.")
+    data = data_of(call_tool(create_server(repo, llm), "explain_last_change", {"strict": True}))
+    assert [(c["path"], c["grounded"]) for c in data["citations"]] == [
+        ("src/calc.py", True),
+        ("src/caf\u00e9.py", True),
+    ]
+
+
+def test_last_change_outside_git_is_tool_error(plain_dir: Path, llm: FakeLLM):
+    result = call_tool(create_server(plain_dir, llm), "explain_last_change")
+    assert result.is_error
+    assert "not a git repository" in text_of(result).lower()
+
+
+# --- file watcher -------------------------------------------------------------
+
+
+@pytest.fixture
+def watched(repo: Path):
+    """A server whose index watches the repo; the observer stops after the test."""
+    apps: list[Vibetter] = []
+
+    def make(llm: FakeLLM):
+        app = Vibetter(repo, llm, watch=True)
+        apps.append(app)
+        return build_mcp(app)
+
+    yield make
+    for app in apps:
+        app.index().stop()
+
+
+def _explain_prompt(server, llm: FakeLLM, path: str = "src/calc.py") -> str:
+    call_tool(server, "scholar_explain", {"file_path": path, "question": "q"})
+    return llm.last
+
+
+def test_regression_trailing_save_not_dropped(repo: Path, llm: FakeLLM, watched):
+    import time
+
+    server = watched(llm)
+    _explain_prompt(server, llm)  # builds the index and starts the watcher
+    time.sleep(0.3)
+    write(repo, "src/calc.py", CALC_PY + "# second save\n")
+    time.sleep(0.6)
+    write(repo, "src/calc.py", CALC_PY + "# third save\n")
+    assert wait_until(lambda: "# third save" in _explain_prompt(server, llm))
+
+
+def test_regression_last_change_checked_against_fresh_files(repo: Path, watched):
+    # An agent writes files and asks at once. The diff comes from git, but the
+    # citations were checked against the watcher's index, which had not caught up.
+    llm = FakeLLM("It adds retry() at src/new.py:L1-L3 and EXTRA at src/util.py:L4.")
+    server = watched(llm)
+    call_tool(server, "search_code", {"query": "clamp"})  # index built, watcher running
+    write(repo, "src/new.py", "def retry():\n    pass\n    return 1\n")
+    write(repo, "src/util.py", UTIL_PY + "\nEXTRA = 1\n")
+    data = data_of(call_tool(server, "explain_last_change", {"strict": True}))
+    assert [(c["path"], c["valid"], c["grounded"]) for c in data["citations"]] == [
+        ("src/new.py", True, True),
+        ("src/util.py", True, True),
+    ]
+
+
+def _graph_nodes(server) -> set[str]:
+    return {n["id"] for n in data_of(call_tool(server, "generate_blueprint"))["nodes"]}
+
+
+def test_watcher_drops_deleted_file(repo: Path, llm: FakeLLM, watched):
+    import time
+
+    server = watched(llm)
+    assert "src/util.py" in _graph_nodes(server)
+    time.sleep(0.3)
+    (repo / "src/util.py").unlink()
+    assert wait_until(lambda: "src/util.py" not in _graph_nodes(server))
+
+
+def test_watcher_reindexes_moved_file(repo: Path, llm: FakeLLM, watched):
+    import time
+
+    server = watched(llm)
+    _graph_nodes(server)
+    time.sleep(0.3)
+    (repo / "src/util.py").rename(repo / "src/helpers.py")
+
+    def moved() -> bool:
+        nodes = _graph_nodes(server)
+        return "src/helpers.py" in nodes and "src/util.py" not in nodes
+
+    assert wait_until(moved)
+
+
+def test_watcher_change_reaches_search(repo: Path, llm: FakeLLM, watched):
+    import time
+
+    server = watched(llm)
+    call_tool(server, "search_code", {"query": "clamp"})
+    time.sleep(0.3)
+    write(repo, "src/util.py", "def brand_new_helper():\n    return 7\n")
+
+    def found() -> bool:
+        hits = data_of(call_tool(server, "search_code", {"query": "brand_new_helper"}))["hits"]
+        return bool(hits) and hits[0]["path"] == "src/util.py"
+
+    assert wait_until(found)
+
+
+# --- citations ------------------------------------------------------------------
+
+
+def test_citations_are_checked(repo: Path):
+    reply = (
+        "divide raises at src/calc.py:L6-L7 `raise ZeroDivisionError`. "
+        "The cache lives in src/cache.py:3. Line src/calc.py:L99 does not exist."
+    )
+    data = data_of(
+        call_tool(
+            create_server(repo, FakeLLM(reply)),
+            "scholar_explain",
+            {"file_path": "src/calc.py", "question": "q"},
+        )
+    )
+    by_path = {(c["path"], c["start"]): c for c in data["citations"]}
+    good = by_path[("src/calc.py", 6)]
+    assert good["valid"] and good["grounded"] and good["quote_match"]
+    assert not by_path[("src/cache.py", 3)]["valid"]
+    assert "out of range" in by_path[("src/calc.py", 99)]["reason"]
+    assert data["stats"]["citations"] == {"total": 3, "valid": 1, "grounded": 1, "unverified": 2}
+    assert data["answer"] == reply  # not strict: the answer is untouched
+
+
+def test_citation_outside_shown_context_is_not_grounded(
+    shop: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(server_module, "EXPLAIN_CHARS", 1500)  # room for the target only
+    line = line_of(shop, "shop/report.py", "def ledger_balance")
+    llm = FakeLLM(f"Totals use shop/pricing.py:L9 and ledgers use shop/report.py:L{line}.")
+    data = data_of(
+        call_tool(
+            create_server(shop, llm),
+            "scholar_explain",
+            {"file_path": "shop/pricing.py", "question": "How is tax computed?"},
+        )
+    )
+    verdicts = {c["path"]: c for c in data["citations"]}
+    assert verdicts["shop/pricing.py"]["grounded"] is True
+    assert verdicts["shop/report.py"]["valid"] is True
+    assert verdicts["shop/report.py"]["grounded"] is False
+    assert "def ledger_balance" not in llm.last
+
+
+def test_strict_mode_strips_unverified_claims(repo: Path, monkeypatch: pytest.MonkeyPatch):
+    reply = "Divide checks b at src/calc.py:L6. It retries in src/retry.py:4."
+    args = {"file_path": "src/calc.py", "question": "q"}
+    strict = data_of(
+        call_tool(create_server(repo, FakeLLM(reply)), "scholar_explain", {**args, "strict": True})
+    )
+    assert "src/calc.py:L6" in strict["answer"]
+    assert "It retries" not in strict["answer"]
+    assert "removed claims citing src/retry.py:4" in strict["answer"]
+    monkeypatch.setenv("VIBETTER_STRICT", "1")
+    by_env = data_of(call_tool(create_server(repo, FakeLLM(reply)), "scholar_explain", args))
+    assert by_env["answer"] == strict["answer"]
+
+
+def test_search_code_needs_no_model(shop: Path, llm: FakeLLM):
+    data = data_of(
+        call_tool(create_server(shop, llm), "search_code", {"query": "apply discount", "limit": 2})
+    )
+    assert llm.prompts == []
+    assert 1 <= len(data["hits"]) <= 2
+    top = data["hits"][0]
+    assert top["path"] == "shop/cart.py"
+    assert top["text"].startswith(f"--- shop/cart.py:L{top['start']}-L{top['end']} ---\n")
+    assert re.search(r"^\s*\d+\| ", top["text"], re.MULTILINE)
+    assert data["stats"]["chunks_retrieved"] == len(data["hits"])
+
+
+def test_search_code_limit_is_clamped(tmp_path: Path, llm: FakeLLM):
+    for i in range(60):
+        write(tmp_path, f"m{i:02}.py", f"def f{i}():\n    return 'needle'\n")
+    server = create_server(tmp_path, llm)
+
+    def hits(limit: int) -> int:
+        args = {"query": "needle", "limit": limit}
+        return len(data_of(call_tool(server, "search_code", args))["hits"])
+
+    assert hits(0) == 1
+    assert hits(1000) == 50
+
+
+def test_regression_blueprint_escapes_script_close_in_paths(shop: Path, llm: FakeLLM):
+    # A repo path goes into an inline <script>; "</script>" in it would end the script.
+    write(shop, "web/src/x</script><img src=x onerror=alert(1)>.js", "import '../lib/api.js'\n")
+    html = read_resource(create_server(shop, llm), "ui://blueprint")
+    assert "x<\\/script><img" in html
+    assert "</script><img" not in html
+
+
+def test_search_code_within_a_file(shop: Path, llm: FakeLLM):
+    data = data_of(
+        call_tool(
+            create_server(shop, llm),
+            "search_code",
+            {"query": "refunds", "file_path": "shop/report.py", "limit": 50},
+        )
+    )
+    assert {h["path"] for h in data["hits"]} == {"shop/report.py"}
+
+
+def test_verify_citations_needs_no_model(repo: Path, llm: FakeLLM):
+    data = data_of(
+        call_tool(
+            create_server(repo, llm),
+            "verify_citations",
+            {"text": "See src/calc.py:L1 and app/nowhere.py:2."},
+        )
+    )
+    assert llm.prompts == []
+    assert [c["valid"] for c in data["citations"]] == [True, False]
+    assert all(c["grounded"] is None for c in data["citations"])
+
+
+def test_last_change_lines_are_numbered_and_grounded(repo: Path):
+    write(repo, "src/calc.py", CALC_PY + "\n\ndef triple(x):\n    return 3 * x\n")
+    line = line_of(repo, "src/calc.py", "return 3 * x")
+    llm = FakeLLM(f"triple is new at src/calc.py:L{line}; add is unchanged at src/calc.py:L1.")
+    data = data_of(call_tool(create_server(repo, llm), "explain_last_change"))
+    assert re.search(rf"^\s*{line}\| \+    return 3 \* x$", llm.last, re.MULTILINE)
+    verdicts = {c["start"]: c for c in data["citations"]}
+    assert verdicts[line]["grounded"] is True
+    assert verdicts[1]["valid"] is True and verdicts[1]["grounded"] is False

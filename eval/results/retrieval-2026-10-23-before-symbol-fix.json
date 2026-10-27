@@ -1,0 +1,5844 @@
+{
+ "eval": "retrieval",
+ "vibetter_commit": "e86434e1b5f034a47506ae0054a311513780169f",
+ "vibetter_dirty": false,
+ "python": "3.12.13",
+ "repos": [
+  {
+   "name": "click",
+   "url": "https://github.com/pallets/click",
+   "ref": "8.5.0",
+   "sha": "8b19813f2bfca99f1018a587a8cf54fc959f2e5d",
+   "language": "Python",
+   "license": "BSD-3-Clause"
+  },
+  {
+   "name": "requests",
+   "url": "https://github.com/psf/requests",
+   "ref": "v2.34.2",
+   "sha": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+   "language": "Python",
+   "license": "Apache-2.0"
+  },
+  {
+   "name": "ky",
+   "url": "https://github.com/sindresorhus/ky",
+   "ref": "v2.2.0",
+   "sha": "3541888878c4d303a8bc2ad61815f4e048f55a5d",
+   "language": "TypeScript",
+   "license": "MIT"
+  }
+ ],
+ "questions": 66,
+ "budgets_chars": [
+  24000,
+  60000
+ ],
+ "arms": {
+  "A": "v1: walk order, first N characters, no line numbers",
+  "B": "BM25 over line-aware chunks",
+  "C": "BM25 + symbol/path index, RRF (v2 default)",
+  "D": "C + dense embeddings (fastembed BAAI/bge-small-en-v1.5)"
+ },
+ "skipped_arms": {},
+ "metrics": {
+  "recall": "share of gold lines that appear complete in the context",
+  "mrr": "1/rank of the first context block that overlaps a gold span (0 if none); a block is a file for arm A and a chunk for B, C and D",
+  "any_gold_in_context": "share of questions with at least one gold line shown",
+  "ci95": "percentile bootstrap over questions, 10,000 resamples, seed 0"
+ },
+ "summary": {
+  "24000": {
+   "A": {
+    "n": 66,
+    "recall": 0.0,
+    "recall_ci95": [
+     0.0,
+     0.0
+    ],
+    "mrr": 0.0,
+    "mrr_ci95": [
+     0.0,
+     0.0
+    ],
+    "any_gold_in_context": 0.0,
+    "by_repo": {
+     "click": {
+      "n": 22,
+      "recall": 0.0,
+      "recall_ci95": [
+       0.0,
+       0.0
+      ],
+      "mrr": 0.0,
+      "mrr_ci95": [
+       0.0,
+       0.0
+      ],
+      "any_gold_in_context": 0.0
+     },
+     "requests": {
+      "n": 22,
+      "recall": 0.0,
+      "recall_ci95": [
+       0.0,
+       0.0
+      ],
+      "mrr": 0.0,
+      "mrr_ci95": [
+       0.0,
+       0.0
+      ],
+      "any_gold_in_context": 0.0
+     },
+     "ky": {
+      "n": 22,
+      "recall": 0.0,
+      "recall_ci95": [
+       0.0,
+       0.0
+      ],
+      "mrr": 0.0,
+      "mrr_ci95": [
+       0.0,
+       0.0
+      ],
+      "any_gold_in_context": 0.0
+     }
+    }
+   },
+   "B": {
+    "n": 66,
+    "recall": 0.5352,
+    "recall_ci95": [
+     0.4215,
+     0.6497
+    ],
+    "mrr": 0.2735,
+    "mrr_ci95": [
+     0.1938,
+     0.3615
+    ],
+    "any_gold_in_context": 0.5758,
+    "by_repo": {
+     "click": {
+      "n": 22,
+      "recall": 0.5455,
+      "recall_ci95": [
+       0.3182,
+       0.7727
+      ],
+      "mrr": 0.2376,
+      "mrr_ci95": [
+       0.1212,
+       0.3712
+      ],
+      "any_gold_in_context": 0.5455
+     },
+     "requests": {
+      "n": 22,
+      "recall": 0.702,
+      "recall_ci95": [
+       0.5152,
+       0.8838
+      ],
+      "mrr": 0.4271,
+      "mrr_ci95": [
+       0.2594,
+       0.6003
+      ],
+      "any_gold_in_context": 0.7273
+     },
+     "ky": {
+      "n": 22,
+      "recall": 0.3583,
+      "recall_ci95": [
+       0.1793,
+       0.5486
+      ],
+      "mrr": 0.1557,
+      "mrr_ci95": [
+       0.0652,
+       0.2652
+      ],
+      "any_gold_in_context": 0.4545
+     }
+    },
+    "vs_A": {
+     "recall_diff": 0.5352,
+     "ci95": [
+      0.4215,
+      0.6497
+     ]
+    }
+   },
+   "C": {
+    "n": 66,
+    "recall": 0.3119,
+    "recall_ci95": [
+     0.2059,
+     0.4209
+    ],
+    "mrr": 0.1687,
+    "mrr_ci95": [
+     0.1013,
+     0.2442
+    ],
+    "any_gold_in_context": 0.3485,
+    "by_repo": {
+     "click": {
+      "n": 22,
+      "recall": 0.1818,
+      "recall_ci95": [
+       0.0455,
+       0.3636
+      ],
+      "mrr": 0.1152,
+      "mrr_ci95": [
+       0.0091,
+       0.2515
+      ],
+      "any_gold_in_context": 0.1818
+     },
+     "requests": {
+      "n": 22,
+      "recall": 0.5205,
+      "recall_ci95": [
+       0.3182,
+       0.7221
+      ],
+      "mrr": 0.308,
+      "mrr_ci95": [
+       0.1644,
+       0.4674
+      ],
+      "any_gold_in_context": 0.5909
+     },
+     "ky": {
+      "n": 22,
+      "recall": 0.2334,
+      "recall_ci95": [
+       0.0857,
+       0.41
+      ],
+      "mrr": 0.083,
+      "mrr_ci95": [
+       0.0273,
+       0.1511
+      ],
+      "any_gold_in_context": 0.2727
+     }
+    },
+    "vs_A": {
+     "recall_diff": 0.3119,
+     "ci95": [
+      0.2059,
+      0.4209
+     ]
+    }
+   },
+   "D": {
+    "n": 66,
+    "recall": 0.398,
+    "recall_ci95": [
+     0.2847,
+     0.5111
+    ],
+    "mrr": 0.2217,
+    "mrr_ci95": [
+     0.1421,
+     0.311
+    ],
+    "any_gold_in_context": 0.4394,
+    "by_repo": {
+     "click": {
+      "n": 22,
+      "recall": 0.4091,
+      "recall_ci95": [
+       0.2273,
+       0.6364
+      ],
+      "mrr": 0.163,
+      "mrr_ci95": [
+       0.0544,
+       0.295
+      ],
+      "any_gold_in_context": 0.4091
+     },
+     "requests": {
+      "n": 22,
+      "recall": 0.6198,
+      "recall_ci95": [
+       0.4241,
+       0.7988
+      ],
+      "mrr": 0.4019,
+      "mrr_ci95": [
+       0.2364,
+       0.5747
+      ],
+      "any_gold_in_context": 0.6818
+     },
+     "ky": {
+      "n": 22,
+      "recall": 0.1652,
+      "recall_ci95": [
+       0.0402,
+       0.3186
+      ],
+      "mrr": 0.1001,
+      "mrr_ci95": [
+       0.0133,
+       0.2146
+      ],
+      "any_gold_in_context": 0.2273
+     }
+    },
+    "vs_A": {
+     "recall_diff": 0.398,
+     "ci95": [
+      0.2847,
+      0.5111
+     ]
+    }
+   }
+  },
+  "60000": {
+   "A": {
+    "n": 66,
+    "recall": 0.0,
+    "recall_ci95": [
+     0.0,
+     0.0
+    ],
+    "mrr": 0.0,
+    "mrr_ci95": [
+     0.0,
+     0.0
+    ],
+    "any_gold_in_context": 0.0,
+    "by_repo": {
+     "click": {
+      "n": 22,
+      "recall": 0.0,
+      "recall_ci95": [
+       0.0,
+       0.0
+      ],
+      "mrr": 0.0,
+      "mrr_ci95": [
+       0.0,
+       0.0
+      ],
+      "any_gold_in_context": 0.0
+     },
+     "requests": {
+      "n": 22,
+      "recall": 0.0,
+      "recall_ci95": [
+       0.0,
+       0.0
+      ],
+      "mrr": 0.0,
+      "mrr_ci95": [
+       0.0,
+       0.0
+      ],
+      "any_gold_in_context": 0.0
+     },
+     "ky": {
+      "n": 22,
+      "recall": 0.0,
+      "recall_ci95": [
+       0.0,
+       0.0
+      ],
+      "mrr": 0.0,
+      "mrr_ci95": [
+       0.0,
+       0.0
+      ],
+      "any_gold_in_context": 0.0
+     }
+    }
+   },
+   "B": {
+    "n": 66,
+    "recall": 0.7568,
+    "recall_ci95": [
+     0.655,
+     0.8507
+    ],
+    "mrr": 0.2885,
+    "mrr_ci95": [
+     0.2116,
+     0.3741
+    ],
+    "any_gold_in_context": 0.7879,
+    "by_repo": {
+     "click": {
+      "n": 22,
+      "recall": 0.803,
+      "recall_ci95": [
+       0.6364,
+       0.9545
+      ],
+      "mrr": 0.2563,
+      "mrr_ci95": [
+       0.145,
+       0.3832
+      ],
+      "any_gold_in_context": 0.8182
+     },
+     "requests": {
+      "n": 22,
+      "recall": 0.8838,
+      "recall_ci95": [
+       0.7424,
+       1.0
+      ],
+      "mrr": 0.4403,
+      "mrr_ci95": [
+       0.2783,
+       0.6082
+      ],
+      "any_gold_in_context": 0.9091
+     },
+     "ky": {
+      "n": 22,
+      "recall": 0.5836,
+      "recall_ci95": [
+       0.3883,
+       0.767
+      ],
+      "mrr": 0.1688,
+      "mrr_ci95": [
+       0.0819,
+       0.2752
+      ],
+      "any_gold_in_context": 0.6364
+     }
+    },
+    "vs_A": {
+     "recall_diff": 0.7568,
+     "ci95": [
+      0.655,
+      0.8507
+     ]
+    }
+   },
+   "C": {
+    "n": 66,
+    "recall": 0.4678,
+    "recall_ci95": [
+     0.3518,
+     0.5855
+    ],
+    "mrr": 0.1793,
+    "mrr_ci95": [
+     0.1131,
+     0.254
+    ],
+    "any_gold_in_context": 0.5,
+    "by_repo": {
+     "click": {
+      "n": 22,
+      "recall": 0.3182,
+      "recall_ci95": [
+       0.1364,
+       0.5
+      ],
+      "mrr": 0.1265,
+      "mrr_ci95": [
+       0.0227,
+       0.2588
+      ],
+      "any_gold_in_context": 0.3182
+     },
+     "requests": {
+      "n": 22,
+      "recall": 0.7343,
+      "recall_ci95": [
+       0.5473,
+       0.8961
+      ],
+      "mrr": 0.322,
+      "mrr_ci95": [
+       0.183,
+       0.4769
+      ],
+      "any_gold_in_context": 0.7727
+     },
+     "ky": {
+      "n": 22,
+      "recall": 0.3508,
+      "recall_ci95": [
+       0.1742,
+       0.5406
+      ],
+      "mrr": 0.0895,
+      "mrr_ci95": [
+       0.0346,
+       0.1561
+      ],
+      "any_gold_in_context": 0.4091
+     }
+    },
+    "vs_A": {
+     "recall_diff": 0.4678,
+     "ci95": [
+      0.3518,
+      0.5855
+     ]
+    }
+   },
+   "D": {
+    "n": 66,
+    "recall": 0.6635,
+    "recall_ci95": [
+     0.5517,
+     0.7683
+    ],
+    "mrr": 0.2393,
+    "mrr_ci95": [
+     0.1626,
+     0.3258
+    ],
+    "any_gold_in_context": 0.697,
+    "by_repo": {
+     "click": {
+      "n": 22,
+      "recall": 0.6212,
+      "recall_ci95": [
+       0.4242,
+       0.8182
+      ],
+      "mrr": 0.1784,
+      "mrr_ci95": [
+       0.0725,
+       0.307
+      ],
+      "any_gold_in_context": 0.6364
+     },
+     "requests": {
+      "n": 22,
+      "recall": 0.9011,
+      "recall_ci95": [
+       0.7648,
+       1.0
+      ],
+      "mrr": 0.4223,
+      "mrr_ci95": [
+       0.2663,
+       0.5866
+      ],
+      "any_gold_in_context": 0.9091
+     },
+     "ky": {
+      "n": 22,
+      "recall": 0.4681,
+      "recall_ci95": [
+       0.2841,
+       0.6552
+      ],
+      "mrr": 0.1172,
+      "mrr_ci95": [
+       0.0324,
+       0.2305
+      ],
+      "any_gold_in_context": 0.5455
+     }
+    },
+    "vs_A": {
+     "recall_diff": 0.6635,
+     "ci95": [
+      0.5517,
+      0.7683
+     ]
+    }
+   }
+  }
+ },
+ "rows": [
+  {
+   "id": "click-01",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-01",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 8,
+   "context_chars": 23942
+  },
+  {
+   "id": "click-01",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 8,
+   "context_chars": 23921
+  },
+  {
+   "id": "click-01",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23937
+  },
+  {
+   "id": "click-01",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-01",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 22,
+   "context_chars": 59954
+  },
+  {
+   "id": "click-01",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 24,
+   "context_chars": 59831
+  },
+  {
+   "id": "click-01",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 23,
+   "context_chars": 59873
+  },
+  {
+   "id": "click-02",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-02",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 10,
+   "context_chars": 23937
+  },
+  {
+   "id": "click-02",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23954
+  },
+  {
+   "id": "click-02",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 7,
+   "blocks": 10,
+   "context_chars": 23959
+  },
+  {
+   "id": "click-02",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-02",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 22,
+   "context_chars": 59778
+  },
+  {
+   "id": "click-02",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 24,
+   "context_chars": 59766
+  },
+  {
+   "id": "click-02",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 7,
+   "blocks": 28,
+   "context_chars": 59822
+  },
+  {
+   "id": "click-03",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-03",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 11,
+   "context_chars": 23943
+  },
+  {
+   "id": "click-03",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23985
+  },
+  {
+   "id": "click-03",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 11,
+   "context_chars": 23935
+  },
+  {
+   "id": "click-03",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-03",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 23,
+   "context_chars": 59785
+  },
+  {
+   "id": "click-03",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 26,
+   "context_chars": 59834
+  },
+  {
+   "id": "click-03",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 25,
+   "context_chars": 59836
+  },
+  {
+   "id": "click-04",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-04",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 9,
+   "context_chars": 23873
+  },
+  {
+   "id": "click-04",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 8,
+   "context_chars": 23956
+  },
+  {
+   "id": "click-04",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 9,
+   "context_chars": 23900
+  },
+  {
+   "id": "click-04",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-04",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 21,
+   "context_chars": 59523
+  },
+  {
+   "id": "click-04",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 21,
+   "context_chars": 59828
+  },
+  {
+   "id": "click-04",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 18,
+   "blocks": 19,
+   "context_chars": 59726
+  },
+  {
+   "id": "click-05",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-05",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23992
+  },
+  {
+   "id": "click-05",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23920
+  },
+  {
+   "id": "click-05",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 7,
+   "blocks": 9,
+   "context_chars": 23986
+  },
+  {
+   "id": "click-05",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-05",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 15,
+   "blocks": 22,
+   "context_chars": 59711
+  },
+  {
+   "id": "click-05",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 9,
+   "blocks": 25,
+   "context_chars": 59728
+  },
+  {
+   "id": "click-05",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 7,
+   "blocks": 22,
+   "context_chars": 59689
+  },
+  {
+   "id": "click-06",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-06",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 10,
+   "context_chars": 23850
+  },
+  {
+   "id": "click-06",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 5,
+   "blocks": 9,
+   "context_chars": 23901
+  },
+  {
+   "id": "click-06",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 10,
+   "context_chars": 23828
+  },
+  {
+   "id": "click-06",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-06",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 23,
+   "context_chars": 59753
+  },
+  {
+   "id": "click-06",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 5,
+   "blocks": 22,
+   "context_chars": 59771
+  },
+  {
+   "id": "click-06",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 24,
+   "context_chars": 59713
+  },
+  {
+   "id": "click-07",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-07",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 9,
+   "blocks": 13,
+   "context_chars": 23844
+  },
+  {
+   "id": "click-07",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23957
+  },
+  {
+   "id": "click-07",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 5,
+   "blocks": 11,
+   "context_chars": 23870
+  },
+  {
+   "id": "click-07",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-07",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 9,
+   "blocks": 27,
+   "context_chars": 59445
+  },
+  {
+   "id": "click-07",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 25,
+   "context_chars": 59790
+  },
+  {
+   "id": "click-07",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 5,
+   "blocks": 26,
+   "context_chars": 59706
+  },
+  {
+   "id": "click-08",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-08",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 6,
+   "blocks": 11,
+   "context_chars": 23944
+  },
+  {
+   "id": "click-08",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23955
+  },
+  {
+   "id": "click-08",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 7,
+   "blocks": 10,
+   "context_chars": 23957
+  },
+  {
+   "id": "click-08",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-08",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 6,
+   "blocks": 24,
+   "context_chars": 59836
+  },
+  {
+   "id": "click-08",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 26,
+   "context_chars": 59815
+  },
+  {
+   "id": "click-08",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 7,
+   "blocks": 25,
+   "context_chars": 59881
+  },
+  {
+   "id": "click-09",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-09",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23943
+  },
+  {
+   "id": "click-09",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23943
+  },
+  {
+   "id": "click-09",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23926
+  },
+  {
+   "id": "click-09",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-09",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 23,
+   "context_chars": 59881
+  },
+  {
+   "id": "click-09",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 24,
+   "context_chars": 59830
+  },
+  {
+   "id": "click-09",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 21,
+   "blocks": 28,
+   "context_chars": 59820
+  },
+  {
+   "id": "click-10",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-10",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 5,
+   "blocks": 10,
+   "context_chars": 23876
+  },
+  {
+   "id": "click-10",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23791
+  },
+  {
+   "id": "click-10",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23846
+  },
+  {
+   "id": "click-10",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-10",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 5,
+   "blocks": 26,
+   "context_chars": 59753
+  },
+  {
+   "id": "click-10",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 24,
+   "context_chars": 59700
+  },
+  {
+   "id": "click-10",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 26,
+   "context_chars": 59622
+  },
+  {
+   "id": "click-11",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-11",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23998
+  },
+  {
+   "id": "click-11",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 12,
+   "context_chars": 23947
+  },
+  {
+   "id": "click-11",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 8,
+   "blocks": 12,
+   "context_chars": 23901
+  },
+  {
+   "id": "click-11",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-11",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 17,
+   "blocks": 27,
+   "context_chars": 59880
+  },
+  {
+   "id": "click-11",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 27,
+   "context_chars": 59757
+  },
+  {
+   "id": "click-11",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 8,
+   "blocks": 27,
+   "context_chars": 59822
+  },
+  {
+   "id": "click-12",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-12",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23961
+  },
+  {
+   "id": "click-12",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23976
+  },
+  {
+   "id": "click-12",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23982
+  },
+  {
+   "id": "click-12",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-12",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 23,
+   "context_chars": 59903
+  },
+  {
+   "id": "click-12",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 18,
+   "blocks": 25,
+   "context_chars": 59879
+  },
+  {
+   "id": "click-12",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 16,
+   "blocks": 22,
+   "context_chars": 59921
+  },
+  {
+   "id": "click-13",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-13",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 6,
+   "blocks": 11,
+   "context_chars": 23974
+  },
+  {
+   "id": "click-13",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23988
+  },
+  {
+   "id": "click-13",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23881
+  },
+  {
+   "id": "click-13",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-13",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 6,
+   "blocks": 25,
+   "context_chars": 59920
+  },
+  {
+   "id": "click-13",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 23,
+   "context_chars": 59733
+  },
+  {
+   "id": "click-13",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 30,
+   "context_chars": 59736
+  },
+  {
+   "id": "click-14",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-14",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 8,
+   "context_chars": 23996
+  },
+  {
+   "id": "click-14",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23922
+  },
+  {
+   "id": "click-14",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23914
+  },
+  {
+   "id": "click-14",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-14",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 19,
+   "blocks": 21,
+   "context_chars": 59872
+  },
+  {
+   "id": "click-14",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 26,
+   "context_chars": 59901
+  },
+  {
+   "id": "click-14",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 26,
+   "context_chars": 59830
+  },
+  {
+   "id": "click-15",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-15",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 12,
+   "context_chars": 23941
+  },
+  {
+   "id": "click-15",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23916
+  },
+  {
+   "id": "click-15",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23926
+  },
+  {
+   "id": "click-15",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-15",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 22,
+   "context_chars": 59918
+  },
+  {
+   "id": "click-15",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 12,
+   "blocks": 27,
+   "context_chars": 59813
+  },
+  {
+   "id": "click-15",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 28,
+   "context_chars": 59807
+  },
+  {
+   "id": "click-16",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-16",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 10,
+   "context_chars": 23986
+  },
+  {
+   "id": "click-16",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23986
+  },
+  {
+   "id": "click-16",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23949
+  },
+  {
+   "id": "click-16",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-16",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 23,
+   "context_chars": 59790
+  },
+  {
+   "id": "click-16",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 27,
+   "context_chars": 59688
+  },
+  {
+   "id": "click-16",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 10,
+   "blocks": 28,
+   "context_chars": 59800
+  },
+  {
+   "id": "click-17",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-17",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 8,
+   "context_chars": 23913
+  },
+  {
+   "id": "click-17",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23956
+  },
+  {
+   "id": "click-17",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23977
+  },
+  {
+   "id": "click-17",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-17",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 22,
+   "context_chars": 59908
+  },
+  {
+   "id": "click-17",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 27,
+   "context_chars": 59861
+  },
+  {
+   "id": "click-17",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 27,
+   "context_chars": 59857
+  },
+  {
+   "id": "click-18",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-18",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23887
+  },
+  {
+   "id": "click-18",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23858
+  },
+  {
+   "id": "click-18",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23862
+  },
+  {
+   "id": "click-18",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-18",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.666667,
+   "rank": 15,
+   "blocks": 23,
+   "context_chars": 59797
+  },
+  {
+   "id": "click-18",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 25,
+   "context_chars": 59738
+  },
+  {
+   "id": "click-18",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.666667,
+   "rank": 14,
+   "blocks": 27,
+   "context_chars": 59726
+  },
+  {
+   "id": "click-19",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-19",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23993
+  },
+  {
+   "id": "click-19",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23962
+  },
+  {
+   "id": "click-19",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 14,
+   "context_chars": 23987
+  },
+  {
+   "id": "click-19",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-19",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 10,
+   "blocks": 25,
+   "context_chars": 59858
+  },
+  {
+   "id": "click-19",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 31,
+   "context_chars": 59644
+  },
+  {
+   "id": "click-19",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 31,
+   "context_chars": 59661
+  },
+  {
+   "id": "click-20",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-20",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 4,
+   "blocks": 11,
+   "context_chars": 23980
+  },
+  {
+   "id": "click-20",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23899
+  },
+  {
+   "id": "click-20",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23824
+  },
+  {
+   "id": "click-20",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-20",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 4,
+   "blocks": 23,
+   "context_chars": 59792
+  },
+  {
+   "id": "click-20",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 26,
+   "context_chars": 59704
+  },
+  {
+   "id": "click-20",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 27,
+   "context_chars": 59561
+  },
+  {
+   "id": "click-21",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-21",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23925
+  },
+  {
+   "id": "click-21",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 12,
+   "context_chars": 23964
+  },
+  {
+   "id": "click-21",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 12,
+   "context_chars": 23949
+  },
+  {
+   "id": "click-21",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-21",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 15,
+   "blocks": 22,
+   "context_chars": 59744
+  },
+  {
+   "id": "click-21",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 28,
+   "context_chars": 59832
+  },
+  {
+   "id": "click-21",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 25,
+   "context_chars": 59775
+  },
+  {
+   "id": "click-22",
+   "repo": "click",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "click-22",
+   "repo": "click",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 11,
+   "context_chars": 23913
+  },
+  {
+   "id": "click-22",
+   "repo": "click",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 11,
+   "context_chars": 23907
+  },
+  {
+   "id": "click-22",
+   "repo": "click",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 13,
+   "context_chars": 23920
+  },
+  {
+   "id": "click-22",
+   "repo": "click",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "click-22",
+   "repo": "click",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 27,
+   "context_chars": 59820
+  },
+  {
+   "id": "click-22",
+   "repo": "click",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 28,
+   "context_chars": 59781
+  },
+  {
+   "id": "click-22",
+   "repo": "click",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 27,
+   "context_chars": 59911
+  },
+  {
+   "id": "requests-01",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-01",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 10,
+   "context_chars": 23994
+  },
+  {
+   "id": "requests-01",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.885714,
+   "rank": 4,
+   "blocks": 12,
+   "context_chars": 23916
+  },
+  {
+   "id": "requests-01",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.885714,
+   "rank": 1,
+   "blocks": 12,
+   "context_chars": 23956
+  },
+  {
+   "id": "requests-01",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-01",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 25,
+   "context_chars": 59827
+  },
+  {
+   "id": "requests-01",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.885714,
+   "rank": 4,
+   "blocks": 21,
+   "context_chars": 59847
+  },
+  {
+   "id": "requests-01",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 23,
+   "context_chars": 59913
+  },
+  {
+   "id": "requests-02",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-02",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23990
+  },
+  {
+   "id": "requests-02",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 12,
+   "context_chars": 23951
+  },
+  {
+   "id": "requests-02",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 12,
+   "context_chars": 23954
+  },
+  {
+   "id": "requests-02",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-02",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 11,
+   "blocks": 26,
+   "context_chars": 59836
+  },
+  {
+   "id": "requests-02",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 27,
+   "context_chars": 59899
+  },
+  {
+   "id": "requests-02",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 29,
+   "context_chars": 59809
+  },
+  {
+   "id": "requests-03",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-03",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 11,
+   "context_chars": 23889
+  },
+  {
+   "id": "requests-03",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23818
+  },
+  {
+   "id": "requests-03",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23884
+  },
+  {
+   "id": "requests-03",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-03",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 29,
+   "context_chars": 59661
+  },
+  {
+   "id": "requests-03",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 23,
+   "context_chars": 59626
+  },
+  {
+   "id": "requests-03",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 25,
+   "context_chars": 59787
+  },
+  {
+   "id": "requests-04",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-04",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 11,
+   "context_chars": 23979
+  },
+  {
+   "id": "requests-04",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 9,
+   "context_chars": 23965
+  },
+  {
+   "id": "requests-04",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23967
+  },
+  {
+   "id": "requests-04",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-04",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 23,
+   "context_chars": 59943
+  },
+  {
+   "id": "requests-04",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 22,
+   "context_chars": 59818
+  },
+  {
+   "id": "requests-04",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 13,
+   "blocks": 22,
+   "context_chars": 59922
+  },
+  {
+   "id": "requests-05",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-05",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 14,
+   "context_chars": 23947
+  },
+  {
+   "id": "requests-05",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 14,
+   "context_chars": 23891
+  },
+  {
+   "id": "requests-05",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 5,
+   "blocks": 13,
+   "context_chars": 23895
+  },
+  {
+   "id": "requests-05",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-05",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 27,
+   "context_chars": 59875
+  },
+  {
+   "id": "requests-05",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 24,
+   "blocks": 27,
+   "context_chars": 59696
+  },
+  {
+   "id": "requests-05",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 5,
+   "blocks": 26,
+   "context_chars": 59762
+  },
+  {
+   "id": "requests-06",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-06",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 13,
+   "context_chars": 23892
+  },
+  {
+   "id": "requests-06",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23948
+  },
+  {
+   "id": "requests-06",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 7,
+   "blocks": 10,
+   "context_chars": 23936
+  },
+  {
+   "id": "requests-06",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-06",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 24,
+   "context_chars": 59797
+  },
+  {
+   "id": "requests-06",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 26,
+   "context_chars": 59783
+  },
+  {
+   "id": "requests-06",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 7,
+   "blocks": 25,
+   "context_chars": 59806
+  },
+  {
+   "id": "requests-07",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-07",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 9,
+   "context_chars": 23978
+  },
+  {
+   "id": "requests-07",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23927
+  },
+  {
+   "id": "requests-07",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23995
+  },
+  {
+   "id": "requests-07",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-07",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 24,
+   "context_chars": 59869
+  },
+  {
+   "id": "requests-07",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 12,
+   "blocks": 26,
+   "context_chars": 59870
+  },
+  {
+   "id": "requests-07",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 10,
+   "blocks": 25,
+   "context_chars": 59902
+  },
+  {
+   "id": "requests-08",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-08",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23919
+  },
+  {
+   "id": "requests-08",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 14,
+   "context_chars": 23870
+  },
+  {
+   "id": "requests-08",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23955
+  },
+  {
+   "id": "requests-08",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-08",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 18,
+   "blocks": 25,
+   "context_chars": 59859
+  },
+  {
+   "id": "requests-08",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 25,
+   "context_chars": 59726
+  },
+  {
+   "id": "requests-08",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 10,
+   "blocks": 28,
+   "context_chars": 59701
+  },
+  {
+   "id": "requests-09",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-09",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 11,
+   "context_chars": 23954
+  },
+  {
+   "id": "requests-09",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 12,
+   "context_chars": 23973
+  },
+  {
+   "id": "requests-09",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 13,
+   "context_chars": 23994
+  },
+  {
+   "id": "requests-09",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-09",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 24,
+   "context_chars": 59798
+  },
+  {
+   "id": "requests-09",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 27,
+   "context_chars": 59817
+  },
+  {
+   "id": "requests-09",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 28,
+   "context_chars": 59821
+  },
+  {
+   "id": "requests-10",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-10",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 4,
+   "blocks": 12,
+   "context_chars": 23926
+  },
+  {
+   "id": "requests-10",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 5,
+   "blocks": 11,
+   "context_chars": 23994
+  },
+  {
+   "id": "requests-10",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 6,
+   "blocks": 12,
+   "context_chars": 23987
+  },
+  {
+   "id": "requests-10",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-10",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 4,
+   "blocks": 27,
+   "context_chars": 59877
+  },
+  {
+   "id": "requests-10",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 5,
+   "blocks": 25,
+   "context_chars": 59904
+  },
+  {
+   "id": "requests-10",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 6,
+   "blocks": 26,
+   "context_chars": 59914
+  },
+  {
+   "id": "requests-11",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-11",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 7,
+   "blocks": 12,
+   "context_chars": 23945
+  },
+  {
+   "id": "requests-11",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23904
+  },
+  {
+   "id": "requests-11",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23940
+  },
+  {
+   "id": "requests-11",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-11",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 7,
+   "blocks": 25,
+   "context_chars": 59762
+  },
+  {
+   "id": "requests-11",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 10,
+   "blocks": 24,
+   "context_chars": 59815
+  },
+  {
+   "id": "requests-11",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 10,
+   "blocks": 24,
+   "context_chars": 59828
+  },
+  {
+   "id": "requests-12",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-12",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23939
+  },
+  {
+   "id": "requests-12",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.12,
+   "rank": 8,
+   "blocks": 9,
+   "context_chars": 23938
+  },
+  {
+   "id": "requests-12",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.48,
+   "rank": 2,
+   "blocks": 12,
+   "context_chars": 23915
+  },
+  {
+   "id": "requests-12",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-12",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 24,
+   "context_chars": 59732
+  },
+  {
+   "id": "requests-12",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 8,
+   "blocks": 24,
+   "context_chars": 59683
+  },
+  {
+   "id": "requests-12",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 22,
+   "context_chars": 59652
+  },
+  {
+   "id": "requests-13",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-13",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 12,
+   "context_chars": 23954
+  },
+  {
+   "id": "requests-13",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 12,
+   "context_chars": 23756
+  },
+  {
+   "id": "requests-13",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 11,
+   "context_chars": 23758
+  },
+  {
+   "id": "requests-13",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-13",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 26,
+   "context_chars": 59763
+  },
+  {
+   "id": "requests-13",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 29,
+   "context_chars": 59713
+  },
+  {
+   "id": "requests-13",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 28,
+   "context_chars": 59544
+  },
+  {
+   "id": "requests-14",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-14",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 11,
+   "context_chars": 23848
+  },
+  {
+   "id": "requests-14",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 8,
+   "context_chars": 23911
+  },
+  {
+   "id": "requests-14",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 13,
+   "context_chars": 23808
+  },
+  {
+   "id": "requests-14",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-14",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 26,
+   "context_chars": 59688
+  },
+  {
+   "id": "requests-14",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 24,
+   "context_chars": 59698
+  },
+  {
+   "id": "requests-14",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 23,
+   "context_chars": 59693
+  },
+  {
+   "id": "requests-15",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-15",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 10,
+   "context_chars": 23998
+  },
+  {
+   "id": "requests-15",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 13,
+   "context_chars": 23885
+  },
+  {
+   "id": "requests-15",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 11,
+   "context_chars": 23972
+  },
+  {
+   "id": "requests-15",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-15",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 27,
+   "context_chars": 59743
+  },
+  {
+   "id": "requests-15",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 26,
+   "context_chars": 59724
+  },
+  {
+   "id": "requests-15",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 26,
+   "context_chars": 59780
+  },
+  {
+   "id": "requests-16",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-16",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.444444,
+   "rank": 3,
+   "blocks": 12,
+   "context_chars": 23911
+  },
+  {
+   "id": "requests-16",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.444444,
+   "rank": 1,
+   "blocks": 11,
+   "context_chars": 23952
+  },
+  {
+   "id": "requests-16",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.444444,
+   "rank": 1,
+   "blocks": 13,
+   "context_chars": 23937
+  },
+  {
+   "id": "requests-16",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-16",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.444444,
+   "rank": 3,
+   "blocks": 26,
+   "context_chars": 59688
+  },
+  {
+   "id": "requests-16",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.444444,
+   "rank": 1,
+   "blocks": 24,
+   "context_chars": 59625
+  },
+  {
+   "id": "requests-16",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 28,
+   "context_chars": 59735
+  },
+  {
+   "id": "requests-17",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-17",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23993
+  },
+  {
+   "id": "requests-17",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 5,
+   "blocks": 12,
+   "context_chars": 23935
+  },
+  {
+   "id": "requests-17",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 10,
+   "context_chars": 23986
+  },
+  {
+   "id": "requests-17",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-17",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 14,
+   "blocks": 23,
+   "context_chars": 59914
+  },
+  {
+   "id": "requests-17",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 5,
+   "blocks": 25,
+   "context_chars": 59822
+  },
+  {
+   "id": "requests-17",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 23,
+   "context_chars": 59818
+  },
+  {
+   "id": "requests-18",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-18",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 8,
+   "context_chars": 23988
+  },
+  {
+   "id": "requests-18",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23902
+  },
+  {
+   "id": "requests-18",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.825,
+   "rank": 6,
+   "blocks": 10,
+   "context_chars": 23888
+  },
+  {
+   "id": "requests-18",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-18",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 26,
+   "context_chars": 59917
+  },
+  {
+   "id": "requests-18",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.825,
+   "rank": 12,
+   "blocks": 22,
+   "context_chars": 59866
+  },
+  {
+   "id": "requests-18",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.825,
+   "rank": 6,
+   "blocks": 24,
+   "context_chars": 59911
+  },
+  {
+   "id": "requests-19",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-19",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 4,
+   "blocks": 13,
+   "context_chars": 23730
+  },
+  {
+   "id": "requests-19",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 10,
+   "context_chars": 23893
+  },
+  {
+   "id": "requests-19",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 15,
+   "context_chars": 23787
+  },
+  {
+   "id": "requests-19",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-19",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 4,
+   "blocks": 24,
+   "context_chars": 59627
+  },
+  {
+   "id": "requests-19",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 28,
+   "context_chars": 59662
+  },
+  {
+   "id": "requests-19",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 26,
+   "context_chars": 59685
+  },
+  {
+   "id": "requests-20",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-20",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23936
+  },
+  {
+   "id": "requests-20",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23894
+  },
+  {
+   "id": "requests-20",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23991
+  },
+  {
+   "id": "requests-20",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-20",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 14,
+   "blocks": 25,
+   "context_chars": 59925
+  },
+  {
+   "id": "requests-20",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 22,
+   "context_chars": 59894
+  },
+  {
+   "id": "requests-20",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 23,
+   "context_chars": 59887
+  },
+  {
+   "id": "requests-21",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-21",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 9,
+   "blocks": 11,
+   "context_chars": 23998
+  },
+  {
+   "id": "requests-21",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 12,
+   "context_chars": 23967
+  },
+  {
+   "id": "requests-21",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 15,
+   "context_chars": 23995
+  },
+  {
+   "id": "requests-21",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-21",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 9,
+   "blocks": 26,
+   "context_chars": 59868
+  },
+  {
+   "id": "requests-21",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 29,
+   "context_chars": 59904
+  },
+  {
+   "id": "requests-21",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 34,
+   "context_chars": 59955
+  },
+  {
+   "id": "requests-22",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "requests-22",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 7,
+   "blocks": 12,
+   "context_chars": 23840
+  },
+  {
+   "id": "requests-22",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 12,
+   "context_chars": 23939
+  },
+  {
+   "id": "requests-22",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 15,
+   "context_chars": 23877
+  },
+  {
+   "id": "requests-22",
+   "repo": "requests",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "requests-22",
+   "repo": "requests",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 7,
+   "blocks": 26,
+   "context_chars": 59673
+  },
+  {
+   "id": "requests-22",
+   "repo": "requests",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 27,
+   "context_chars": 59770
+  },
+  {
+   "id": "requests-22",
+   "repo": "requests",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 14,
+   "blocks": 25,
+   "context_chars": 59673
+  },
+  {
+   "id": "ky-01",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-01",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 10,
+   "blocks": 12,
+   "context_chars": 23929
+  },
+  {
+   "id": "ky-01",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 5,
+   "blocks": 12,
+   "context_chars": 23954
+  },
+  {
+   "id": "ky-01",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23833
+  },
+  {
+   "id": "ky-01",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-01",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 10,
+   "blocks": 28,
+   "context_chars": 59812
+  },
+  {
+   "id": "ky-01",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 5,
+   "blocks": 29,
+   "context_chars": 59704
+  },
+  {
+   "id": "ky-01",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 21,
+   "blocks": 29,
+   "context_chars": 59661
+  },
+  {
+   "id": "ky-02",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-02",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23926
+  },
+  {
+   "id": "ky-02",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23896
+  },
+  {
+   "id": "ky-02",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23994
+  },
+  {
+   "id": "ky-02",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-02",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 24,
+   "context_chars": 59796
+  },
+  {
+   "id": "ky-02",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.25,
+   "rank": 23,
+   "blocks": 29,
+   "context_chars": 59532
+  },
+  {
+   "id": "ky-02",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 27,
+   "context_chars": 59922
+  },
+  {
+   "id": "ky-03",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-03",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.694444,
+   "rank": 6,
+   "blocks": 12,
+   "context_chars": 23933
+  },
+  {
+   "id": "ky-03",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23919
+  },
+  {
+   "id": "ky-03",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23962
+  },
+  {
+   "id": "ky-03",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-03",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.694444,
+   "rank": 6,
+   "blocks": 26,
+   "context_chars": 59727
+  },
+  {
+   "id": "ky-03",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 27,
+   "context_chars": 59638
+  },
+  {
+   "id": "ky-03",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 28,
+   "context_chars": 59824
+  },
+  {
+   "id": "ky-04",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-04",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 8,
+   "blocks": 12,
+   "context_chars": 23945
+  },
+  {
+   "id": "ky-04",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 14,
+   "context_chars": 23911
+  },
+  {
+   "id": "ky-04",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23956
+  },
+  {
+   "id": "ky-04",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-04",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 8,
+   "blocks": 29,
+   "context_chars": 59834
+  },
+  {
+   "id": "ky-04",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 29,
+   "context_chars": 59627
+  },
+  {
+   "id": "ky-04",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 31,
+   "context_chars": 59732
+  },
+  {
+   "id": "ky-05",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-05",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23931
+  },
+  {
+   "id": "ky-05",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23856
+  },
+  {
+   "id": "ky-05",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23882
+  },
+  {
+   "id": "ky-05",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-05",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 30,
+   "context_chars": 59888
+  },
+  {
+   "id": "ky-05",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 27,
+   "context_chars": 59729
+  },
+  {
+   "id": "ky-05",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 28,
+   "context_chars": 59718
+  },
+  {
+   "id": "ky-06",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-06",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23953
+  },
+  {
+   "id": "ky-06",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 12,
+   "context_chars": 23858
+  },
+  {
+   "id": "ky-06",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23986
+  },
+  {
+   "id": "ky-06",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-06",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 14,
+   "blocks": 30,
+   "context_chars": 59760
+  },
+  {
+   "id": "ky-06",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 26,
+   "context_chars": 59776
+  },
+  {
+   "id": "ky-06",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 18,
+   "blocks": 26,
+   "context_chars": 59897
+  },
+  {
+   "id": "ky-07",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-07",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23913
+  },
+  {
+   "id": "ky-07",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23935
+  },
+  {
+   "id": "ky-07",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.875,
+   "rank": 2,
+   "blocks": 11,
+   "context_chars": 23877
+  },
+  {
+   "id": "ky-07",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-07",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.875,
+   "rank": 11,
+   "blocks": 25,
+   "context_chars": 59778
+  },
+  {
+   "id": "ky-07",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.875,
+   "rank": 20,
+   "blocks": 27,
+   "context_chars": 59880
+  },
+  {
+   "id": "ky-07",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.875,
+   "rank": 2,
+   "blocks": 26,
+   "context_chars": 59788
+  },
+  {
+   "id": "ky-08",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-08",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-08",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23894
+  },
+  {
+   "id": "ky-08",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23926
+  },
+  {
+   "id": "ky-08",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-08",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 30,
+   "context_chars": 59995
+  },
+  {
+   "id": "ky-08",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 30,
+   "context_chars": 59790
+  },
+  {
+   "id": "ky-08",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 27,
+   "context_chars": 59960
+  },
+  {
+   "id": "ky-09",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-09",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 10,
+   "context_chars": 23971
+  },
+  {
+   "id": "ky-09",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 9,
+   "context_chars": 23934
+  },
+  {
+   "id": "ky-09",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 9,
+   "context_chars": 23944
+  },
+  {
+   "id": "ky-09",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-09",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 23,
+   "context_chars": 59760
+  },
+  {
+   "id": "ky-09",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 26,
+   "context_chars": 59708
+  },
+  {
+   "id": "ky-09",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 10,
+   "blocks": 26,
+   "context_chars": 59765
+  },
+  {
+   "id": "ky-10",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-10",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 9,
+   "context_chars": 23798
+  },
+  {
+   "id": "ky-10",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23844
+  },
+  {
+   "id": "ky-10",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23771
+  },
+  {
+   "id": "ky-10",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-10",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 1,
+   "blocks": 23,
+   "context_chars": 59596
+  },
+  {
+   "id": "ky-10",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 25,
+   "context_chars": 59463
+  },
+  {
+   "id": "ky-10",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 22,
+   "blocks": 24,
+   "context_chars": 59547
+  },
+  {
+   "id": "ky-11",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-11",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.25,
+   "rank": 2,
+   "blocks": 8,
+   "context_chars": 23973
+  },
+  {
+   "id": "ky-11",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.25,
+   "rank": 2,
+   "blocks": 8,
+   "context_chars": 23973
+  },
+  {
+   "id": "ky-11",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.25,
+   "rank": 2,
+   "blocks": 10,
+   "context_chars": 23938
+  },
+  {
+   "id": "ky-11",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-11",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 21,
+   "context_chars": 59892
+  },
+  {
+   "id": "ky-11",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 2,
+   "blocks": 21,
+   "context_chars": 59892
+  },
+  {
+   "id": "ky-11",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.25,
+   "rank": 2,
+   "blocks": 20,
+   "context_chars": 59910
+  },
+  {
+   "id": "ky-12",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-12",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23905
+  },
+  {
+   "id": "ky-12",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23954
+  },
+  {
+   "id": "ky-12",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23961
+  },
+  {
+   "id": "ky-12",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-12",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 15,
+   "blocks": 22,
+   "context_chars": 59940
+  },
+  {
+   "id": "ky-12",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 25,
+   "context_chars": 59825
+  },
+  {
+   "id": "ky-12",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 23,
+   "context_chars": 59916
+  },
+  {
+   "id": "ky-13",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-13",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.1875,
+   "rank": 5,
+   "blocks": 14,
+   "context_chars": 23877
+  },
+  {
+   "id": "ky-13",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23840
+  },
+  {
+   "id": "ky-13",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.625,
+   "rank": 11,
+   "blocks": 14,
+   "context_chars": 23915
+  },
+  {
+   "id": "ky-13",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-13",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.8125,
+   "rank": 5,
+   "blocks": 29,
+   "context_chars": 59723
+  },
+  {
+   "id": "ky-13",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 30,
+   "context_chars": 59585
+  },
+  {
+   "id": "ky-13",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.625,
+   "rank": 11,
+   "blocks": 31,
+   "context_chars": 59728
+  },
+  {
+   "id": "ky-14",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-14",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 10,
+   "context_chars": 23963
+  },
+  {
+   "id": "ky-14",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23921
+  },
+  {
+   "id": "ky-14",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23987
+  },
+  {
+   "id": "ky-14",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-14",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.708333,
+   "rank": 17,
+   "blocks": 26,
+   "context_chars": 59936
+  },
+  {
+   "id": "ky-14",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.708333,
+   "rank": 20,
+   "blocks": 26,
+   "context_chars": 59857
+  },
+  {
+   "id": "ky-14",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 24,
+   "context_chars": 59856
+  },
+  {
+   "id": "ky-15",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-15",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 13,
+   "context_chars": 23978
+  },
+  {
+   "id": "ky-15",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 8,
+   "blocks": 12,
+   "context_chars": 23958
+  },
+  {
+   "id": "ky-15",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23944
+  },
+  {
+   "id": "ky-15",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-15",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 31,
+   "context_chars": 59982
+  },
+  {
+   "id": "ky-15",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 8,
+   "blocks": 29,
+   "context_chars": 59825
+  },
+  {
+   "id": "ky-15",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 28,
+   "context_chars": 59854
+  },
+  {
+   "id": "ky-16",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-16",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.75,
+   "rank": 6,
+   "blocks": 13,
+   "context_chars": 23931
+  },
+  {
+   "id": "ky-16",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23941
+  },
+  {
+   "id": "ky-16",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 15,
+   "context_chars": 23920
+  },
+  {
+   "id": "ky-16",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-16",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.75,
+   "rank": 6,
+   "blocks": 29,
+   "context_chars": 59850
+  },
+  {
+   "id": "ky-16",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 29,
+   "context_chars": 59772
+  },
+  {
+   "id": "ky-16",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.75,
+   "rank": 19,
+   "blocks": 28,
+   "context_chars": 59838
+  },
+  {
+   "id": "ky-17",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-17",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23995
+  },
+  {
+   "id": "ky-17",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 15,
+   "context_chars": 23763
+  },
+  {
+   "id": "ky-17",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23800
+  },
+  {
+   "id": "ky-17",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-17",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 25,
+   "context_chars": 59891
+  },
+  {
+   "id": "ky-17",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 30,
+   "context_chars": 59711
+  },
+  {
+   "id": "ky-17",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.914286,
+   "rank": 28,
+   "blocks": 31,
+   "context_chars": 59715
+  },
+  {
+   "id": "ky-18",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-18",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23911
+  },
+  {
+   "id": "ky-18",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 15,
+   "context_chars": 23943
+  },
+  {
+   "id": "ky-18",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 9,
+   "blocks": 11,
+   "context_chars": 23884
+  },
+  {
+   "id": "ky-18",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-18",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 30,
+   "context_chars": 59683
+  },
+  {
+   "id": "ky-18",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 30,
+   "context_chars": 59795
+  },
+  {
+   "id": "ky-18",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 9,
+   "blocks": 30,
+   "context_chars": 59753
+  },
+  {
+   "id": "ky-19",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-19",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23862
+  },
+  {
+   "id": "ky-19",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23814
+  },
+  {
+   "id": "ky-19",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23795
+  },
+  {
+   "id": "ky-19",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-19",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 28,
+   "context_chars": 59555
+  },
+  {
+   "id": "ky-19",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 26,
+   "context_chars": 59367
+  },
+  {
+   "id": "ky-19",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 26,
+   "blocks": 28,
+   "context_chars": 59358
+  },
+  {
+   "id": "ky-20",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-20",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 11,
+   "context_chars": 23871
+  },
+  {
+   "id": "ky-20",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.884615,
+   "rank": 3,
+   "blocks": 8,
+   "context_chars": 23998
+  },
+  {
+   "id": "ky-20",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.884615,
+   "rank": 1,
+   "blocks": 9,
+   "context_chars": 23862
+  },
+  {
+   "id": "ky-20",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-20",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 1.0,
+   "rank": 3,
+   "blocks": 25,
+   "context_chars": 59480
+  },
+  {
+   "id": "ky-20",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.884615,
+   "rank": 3,
+   "blocks": 22,
+   "context_chars": 59723
+  },
+  {
+   "id": "ky-20",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.884615,
+   "rank": 1,
+   "blocks": 26,
+   "context_chars": 59578
+  },
+  {
+   "id": "ky-21",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-21",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23804
+  },
+  {
+   "id": "ky-21",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23744
+  },
+  {
+   "id": "ky-21",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 12,
+   "context_chars": 23829
+  },
+  {
+   "id": "ky-21",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-21",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 25,
+   "context_chars": 59631
+  },
+  {
+   "id": "ky-21",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 26,
+   "context_chars": 59659
+  },
+  {
+   "id": "ky-21",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 24,
+   "context_chars": 59572
+  },
+  {
+   "id": "ky-22",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 24000
+  },
+  {
+   "id": "ky-22",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23911
+  },
+  {
+   "id": "ky-22",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 11,
+   "context_chars": 23895
+  },
+  {
+   "id": "ky-22",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 24000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 13,
+   "context_chars": 23921
+  },
+  {
+   "id": "ky-22",
+   "repo": "ky",
+   "arm": "A",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 3,
+   "context_chars": 60000
+  },
+  {
+   "id": "ky-22",
+   "repo": "ky",
+   "arm": "B",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 30,
+   "context_chars": 59859
+  },
+  {
+   "id": "ky-22",
+   "repo": "ky",
+   "arm": "C",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 28,
+   "context_chars": 59859
+  },
+  {
+   "id": "ky-22",
+   "repo": "ky",
+   "arm": "D",
+   "budget": 60000,
+   "recall": 0.0,
+   "rank": null,
+   "blocks": 33,
+   "context_chars": 59700
+  }
+ ]
+}

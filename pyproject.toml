@@ -1,0 +1,90 @@
+[project]
+name = "vibetter"
+version = "2.0.0"
+description = "MCP server for questions about AI-written code, answered from your repo with file:line context."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Neeraj Bhargav Rondla" }]
+keywords = ["mcp", "llm", "code-review", "claude-code", "cursor"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development",
+]
+dependencies = [
+    "fastmcp>=3,<5",
+    "watchdog>=4,<7",
+    "python-dotenv>=1.0.1,<2",
+    "pathspec>=0.12,<2",
+    "gTTS>=2.4,<3",
+]
+
+[project.optional-dependencies]
+gemini = ["google-genai>=1.0,<3"]
+openai = ["openai>=1.40,<4"]
+anthropic = ["anthropic>=0.40,<3"]
+ollama = ["ollama>=0.4,<1"]
+dense = ["fastembed>=0.5,<1"]
+otel = ["opentelemetry-sdk>=1.30,<2", "opentelemetry-exporter-otlp-proto-http>=1.30,<2"]
+
+[project.scripts]
+vibetter = "vibetter.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/neerajbhargav/vibetter"
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<10",
+    "ruff>=0.15,<1",
+    "pyright[nodejs]>=1.1.400,<2",
+    "google-genai>=1.0,<3",
+    "openai>=1.40,<4",
+    "anthropic>=0.40,<3",
+    "ollama>=0.4,<1",
+    "opentelemetry-sdk>=1.30,<2",
+]
+
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vibetter"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src", "/tests", "/install.sh", "/install.ps1", "/.env.example", "/uv.lock",
+    "/frontend/src", "/frontend/public", "/frontend/index.html", "/frontend/*.config.js",
+    "/frontend/package.json", "/frontend/package-lock.json",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["tests/fixtures"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "ASYNC", "BLE", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["BLE001"]
+
+[tool.pyright]
+include = ["src", "tests", "eval"]
+exclude = ["tests/fixtures", "eval/.cache"]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
