@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0 (unreleased)
+## 2.0.0
 
 v2 turns VIBETTER from a prompt wrapper into a grounded Q&A server: answers come from retrieved,
 line-numbered code, and every `path:line` citation the parser finds in an answer is checked. Measured results

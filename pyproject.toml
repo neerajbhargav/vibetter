@@ -1,6 +1,6 @@
 [project]
 name = "vibetter"
-version = "2.0.0.dev0"
+version = "2.0.0"
 description = "MCP server for questions about AI-written code, answered from your repo with file:line context."
 readme = "README.md"
 license = "MIT"
